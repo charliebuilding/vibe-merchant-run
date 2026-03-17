@@ -520,6 +520,35 @@
             }
         }
 
+        /* Wix iframe embed: compact layout for small iframe (320x500) */
+        body.in-iframe #startScreen {
+            justify-content: center;
+            gap: 12px;
+        }
+        body.in-iframe #startScreen .title {
+            font-size: 28px;
+            margin-bottom: 0;
+        }
+        body.in-iframe #startScreen .subtitle {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        body.in-iframe #startScreen .username-input-container {
+            margin: 10px 0 !important;
+        }
+        body.in-iframe #startScreen .username-input {
+            padding: 10px 15px !important;
+            font-size: 14px !important;
+        }
+        body.in-iframe #startScreen .btn {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        body.in-iframe #startScreen .instructions {
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
         /* How To Play Modal */
         .modal {
             display: none;
@@ -1083,6 +1112,11 @@
             }
         }
         
+        // Detect if running inside an iframe (e.g. Wix embed)
+        if (window.self !== window.top) {
+            document.body.classList.add('in-iframe');
+        }
+
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('orientationchange', resizeCanvas);
