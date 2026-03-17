@@ -292,7 +292,7 @@
             border-radius: 10px;
             padding: 15px; /* Reduced from 20px */
             margin-top: 10px; /* Reduced from 30px - will be overridden by inline style */
-            max-width: 400px;
+            max-width: 340px;
             width: 90%;
             max-height: 400px; /* Increased from 300px */
             min-height: 250px; /* Ensure minimum height */
@@ -975,23 +975,28 @@
                 <span>📸</span><span>SHARE SCORE</span>
             </button>
 
-            <!-- Row: Submit + Challenge side by side -->
+            <!-- Book RTW -->
+            <a href="https://www.letsdothis.com/gb/checkout/ticket?preferred=true&eventId=248572&occurrenceId=21111161678&utm_source=website&utm_medium=social&utm_campaign=jump-game&utm_organiser_id=171180" target="_blank" rel="noopener" class="btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2)); border-color: #FFD700; color: #FFD700; text-decoration: none; white-space: nowrap;">
+                <span>🏃</span><span>BOOK RUN THE WHARF</span>
+            </a>
+
+            <!-- Row: Play Again + Challenge side by side -->
             <div style="display: flex; gap: 8px;">
-                <button id="submitGlobalButton" class="btn" onclick="submitToGlobal()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15)); border-color: #FFD700; color: #FFD700; white-space: nowrap;">
-                    <span>🌍</span><span>SUBMIT</span>
+                <button class="btn" onclick="restartGame()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.05); white-space: nowrap;">
+                    <span>🔄</span><span>PLAY AGAIN</span>
                 </button>
                 <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00; white-space: nowrap;">
                     <span>⚔️</span><span>CHALLENGE</span>
                 </button>
             </div>
 
-            <!-- Secondary row: Tutorial + Retry side by side -->
+            <!-- Row: How To Play + Submit side by side -->
             <div style="display: flex; gap: 8px;">
                 <button class="btn" onclick="showHowToPlayFromGameOver()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 8px; border-color: #666; color: #999; background: rgba(255,255,255,0.03); white-space: nowrap;">
                     <span>📖</span><span>HOW TO PLAY</span>
                 </button>
-                <button class="btn" onclick="restartGame()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 8px; border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.05); white-space: nowrap;">
-                    <span>🔄</span><span>PLAY AGAIN</span>
+                <button id="submitGlobalButton" class="btn" onclick="submitToGlobal()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 8px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15)); border-color: #FFD700; color: #FFD700; white-space: nowrap;">
+                    <span>🌍</span><span>SUBMIT</span>
                 </button>
             </div>
         </div>
@@ -1931,42 +1936,6 @@
             return activePowerUps.some(p => p.active && p.type === type);
         }
 
-        // PACKAGE A: Particle Trail
-        function createParticleTrail() {
-            if (frameCount % 2 === 0) { // Create every other frame
-                particleTrail.push({
-                    x: player.x,
-                    y: player.y + player.height / 2,
-                    size: 8,
-                    life: 20,
-                    color: score >= 500 ? '#FFD700' : '#00FFD1' // Gold for Canary Wharf, cyan before
-                });
-            }
-        }
-
-        function updateParticleTrail() {
-            particleTrail.forEach(particle => {
-                particle.x -= 3 * dt;
-                particle.life -= dt;
-                particle.size *= Math.pow(0.95, dt);
-            });
-            particleTrail = particleTrail.filter(p => p.life > 0);
-        }
-
-        function drawParticleTrail() {
-            particleTrail.forEach(particle => {
-                ctx.save();
-                ctx.globalAlpha = particle.life / 20;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = particle.color;
-                ctx.fillStyle = particle.color;
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-        }
-
         // PACKAGE A: Screen Shake
         function triggerScreenShake(intensity, duration) {
             screenShake = {
@@ -2038,7 +2007,7 @@
                 size: 20,
                 color: color,
                 text: text,
-                isText: true
+                isFloatingText: true
             });
         }
 
@@ -3289,6 +3258,7 @@
             coins = [];
             totalCoinsCollected = 0;
             particles = [];
+            confettiParticles = [];
             screenShake = { active: false, intensity: 0, duration: 0, elapsed: 0 };
             nearMissJustAwarded = false;
             challengeBeaten = false;
