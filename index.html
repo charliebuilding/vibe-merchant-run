@@ -171,10 +171,12 @@
             padding: 20px 10px 40px 10px;
         }
 
-        /* When overlay screens are visible, allow body scrolling */
+        /* When overlay screens are visible, unlock body so iOS WebViews can scroll */
         body.screen-visible {
-            touch-action: pan-y !important;
+            position: static !important;
             overflow: visible !important;
+            touch-action: pan-y !important;
+            height: auto !important;
         }
 
         .title {
@@ -862,7 +864,7 @@
                 </div>
                 <div class="promo-box">
                     <p><strong>📸 SHARE YOUR SCORE!</strong></p>
-                    <p>Hit SHARE after your run to download your score card. Tag <strong>@fridaynightlights.run</strong> on your Instagram story and challenge your mates!</p>
+                    <p>Hit SHARE after your run to send your score card straight to WhatsApp, Instagram or anywhere! Tag <strong>@fridaynightlights.run</strong> and challenge your mates!</p>
                 </div>
                 <button class="modal-btn" onclick="showHowToPlayPage2()" style="margin-top: 20px;">NEXT: POWER-UPS →</button>
             </div>
@@ -3491,18 +3493,51 @@
 
         // Share score function
         function shareScore() {
-            generateShareImage(score);
-            
-            // Show success message
             const shareButton = document.getElementById('shareButton');
             const originalText = shareButton.innerHTML;
-            shareButton.innerHTML = '<span>✅</span><span>SCORE SAVED!</span>';
+            const shareCanvas = document.getElementById('shareCanvas');
+
+            // Generate the image first
+            generateShareImage(score);
+
+            // Try Web Share API with file (works on iOS Safari, WhatsApp, Instagram)
+            shareCanvas.toBlob(function(blob) {
+                const tierSlug = score >= 500 ? 'golden-ticket' : score >= 300 ? 'elite-pass' : score >= 100 ? 'vip-pass' : 'runner';
+                const fileName = 'fnl-' + tierSlug + '-' + score + '.png';
+                const file = new File([blob], fileName, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Vibe Merchant Run - Friday Night Lights',
+                        text: '🏆 I scored ' + score + ' on Vibe Merchant Run! Can you beat me? 🎮\n\n' + window.location.origin + window.location.pathname
+                    }).then(() => {
+                        shareButton.innerHTML = '<span>✅</span><span>SHARED!</span>';
+                        shareButton.style.background = 'linear-gradient(135deg, #00FF00 0%, #00AA00 100%)';
+                        setTimeout(() => { shareButton.innerHTML = originalText; shareButton.style.background = ''; }, 3000);
+                    }).catch(() => {
+                        // User cancelled - fall back to download
+                        downloadShareImage(blob, fileName, shareButton, originalText);
+                    });
+                } else {
+                    // Browser doesn't support file sharing - download instead
+                    downloadShareImage(blob, fileName, shareButton, originalText);
+                }
+            }, 'image/png');
+        }
+
+        function downloadShareImage(blob, fileName, shareButton, originalText) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            shareButton.innerHTML = '<span>✅</span><span>SAVED!</span>';
             shareButton.style.background = 'linear-gradient(135deg, #00FF00 0%, #00AA00 100%)';
-            
-            setTimeout(() => {
-                shareButton.innerHTML = originalText;
-                shareButton.style.background = '';
-            }, 3000);
+            setTimeout(() => { shareButton.innerHTML = originalText; shareButton.style.background = ''; }, 3000);
         }
 
         // Challenge a friend - copy challenge URL to clipboard
@@ -4131,30 +4166,23 @@
             drawCornerStar(ticketLeft + 40, ticketBottom - 20);
             drawCornerStar(ticketRight - 40, ticketBottom - 20);
             
-            // === DOWNLOAD ===
-            const tierSlug = tier === 'golden' ? 'golden-ticket' : tier + '-pass';
-            shareCanvas.toBlob(function(blob) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `fnl-${tierSlug}-${playerScore}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            });
         }
 
         // Allow Enter key to submit score
         
-        // iOS Mobile optimizations - prevent bounce scrolling and gestures
+        // iOS Mobile optimizations - prevent bounce scrolling during gameplay only
         document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
+            // Only block touch scrolling during active gameplay
+            // Allow scrolling on start screen, game over screen, and modals
+            if (gameActive && !gamePaused) {
+                e.preventDefault();
+            }
         }, { passive: false });
-        
-        // Prevent double-tap zoom on iOS
+
+        // Prevent double-tap zoom on iOS (only during gameplay)
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function(e) {
+            if (!gameActive) return; // Allow normal taps on menu screens
             const now = Date.now();
             if (now - lastTouchEnd <= 300) {
                 e.preventDefault();
