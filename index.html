@@ -163,12 +163,18 @@
             background: rgba(10, 10, 31, 0.95);
             z-index: 200;
             backdrop-filter: blur(10px);
-            overflow-y: auto;
+            overflow-y: scroll !important;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            touch-action: pan-y;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y !important;
             padding: 20px 10px 40px 10px;
+        }
+
+        /* When overlay screens are visible, allow body scrolling */
+        body.screen-visible {
+            touch-action: pan-y !important;
+            overflow: visible !important;
         }
 
         .title {
@@ -3217,6 +3223,15 @@
             return false;
         }
 
+        // Toggle body touch-action so overlay screens can scroll
+        function setScreenVisible(visible) {
+            if (visible) {
+                document.body.classList.add('screen-visible');
+            } else {
+                document.body.classList.remove('screen-visible');
+            }
+        }
+
         // Start game
         function startGame() {
             score = 0;
@@ -3266,7 +3281,8 @@
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
             document.getElementById('score').textContent = '0';
-            
+            setScreenVisible(false);
+
             // === EARLY GAME HOOK ===
             const groundY = canvas.height - groundHeight;
             
@@ -3418,8 +3434,9 @@
             }
             
             document.getElementById('gameOverScreen').classList.remove('hidden');
+            setScreenVisible(true);
         }
-        
+
         // Submit score to global leaderboard
         async function submitToGlobal() {
             const button = document.getElementById('submitGlobalButton');
@@ -3686,6 +3703,7 @@
         // Submit score
         // Initialize
         createClubLights();
+        setScreenVisible(true); // Start screen is showing on load
         player.y = canvas.height - groundHeight - player.height;
         // Initialize leaderboard with sample data if empty (first time users)
         function initializeLeaderboard() {
