@@ -887,6 +887,10 @@
                         <span style="font-size: 14px;">+10 points each! Collect as many as you can</span>
                     </div>
                 </div>
+                <div class="promo-box">
+                    <p><strong>🏆 HIT 500 POINTS = £5 DISCOUNT CODE!</strong></p>
+                    <p>Score 500+ and screenshot your score to claim a <strong>£5 discount code for Run The Wharf</strong>!</p>
+                </div>
                 <div class="modal-text" style="font-size: 14px; margin-top: 20px;">
                     <strong>💡 TIP:</strong> Pass super close to obstacles for <strong>+5 CLOSE!</strong> bonus
                 </div>
@@ -2092,8 +2096,12 @@
         
         // Coin System
         function spawnCoin() {
-            // Spawn coins above ground level with enough margin to be visible and reachable
-            const minY = 50;
+            // Spawn coins only where the player can actually reach with a double jump
+            // Max reachable height: first jump (-18) + double jump (-16) with gravity 0.8
+            // = 18²/(2*0.8) + 16²/(2*0.8) = 202 + 160 = 362px above ground
+            const groundY = canvas.height - groundHeight - player.height;
+            const maxJumpHeight = 340; // slightly less than theoretical max for safety
+            const minY = Math.max(50, groundY - maxJumpHeight);
             const maxY = canvas.height - groundHeight - player.height - 30;
             const y = Math.random() * (maxY - minY) + minY;
             coins.push({
@@ -2879,6 +2887,15 @@
                 // Check if we just crossed a 100-point milestone
                 if (score % 100 === 0 && score !== 0) {
                     triggerConfetti();
+                    // Show milestone popup centered on screen (same style as power-up texts)
+                    powerUpTexts.push({
+                        text: '🔥 ' + score + '!',
+                        x: canvas.width / 2,
+                        y: canvas.height / 3,
+                        velocityY: -1.5,
+                        life: 80,
+                        color: '#FFD700'
+                    });
                 }
             }
 
