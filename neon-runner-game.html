@@ -3390,16 +3390,16 @@
                 try {
                     const result = await submitScore(playerUsername, score);
                     if (result.success) {
-                        submitBtn.innerHTML = '<span>✅</span><span>SCORE SUBMITTED!</span>';
+                        submitBtn.innerHTML = '<span>✅</span><span>SUBMITTED!</span>';
                         submitBtn.style.borderColor = '#00FF00';
                         submitBtn.style.color = '#00FF00';
                     } else {
                         // Allow manual retry
-                        submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT TO GLOBAL</span>';
+                        submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                         submitBtn.disabled = false;
                     }
                 } catch (e) {
-                    submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT TO GLOBAL</span>';
+                    submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                     submitBtn.disabled = false;
                 }
                 
@@ -3410,7 +3410,7 @@
             } else {
                 // No Firebase — reset submit button for manual use
                 const submitBtn = document.getElementById('submitGlobalButton');
-                submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT TO GLOBAL</span>';
+                submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                 submitBtn.style.borderColor = '#FFD700';
                 submitBtn.style.color = '#FFD700';
                 submitBtn.disabled = false;
@@ -3435,7 +3435,7 @@
                 
                 if (result.success) {
                     // Success!
-                    button.innerHTML = '<span>✅</span><span>SCORE SUBMITTED!</span>';
+                    button.innerHTML = '<span>✅</span><span>SUBMITTED!</span>';
                     button.style.borderColor = '#00FF00';
                     button.style.color = '#00FF00';
                     button.disabled = true;
@@ -3510,7 +3510,7 @@
                     button.style.borderColor = '#00FF00';
                     button.style.color = '#00FF00';
                     setTimeout(() => {
-                        button.innerHTML = '<span>⚔️</span><span>CHALLENGE A FRIEND</span>';
+                        button.innerHTML = '<span>⚔️</span><span>CHALLENGE</span>';
                         button.style.borderColor = '#FFFF00';
                         button.style.color = '#FFFF00';
                     }, 3000);
@@ -3529,7 +3529,7 @@
                 button.style.borderColor = '#00FF00';
                 button.style.color = '#00FF00';
                 setTimeout(() => {
-                    button.innerHTML = '<span>⚔️</span><span>CHALLENGE A FRIEND</span>';
+                    button.innerHTML = '<span>⚔️</span><span>CHALLENGE</span>';
                     button.style.borderColor = '#FFFF00';
                     button.style.color = '#FFFF00';
                 }, 3000);
