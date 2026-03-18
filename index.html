@@ -1151,17 +1151,8 @@
                 </button>
             </div>
 
-            <!-- Row: How To Play + Submit side by side -->
-            <div style="display: flex; gap: 8px;">
-                <button class="btn" onclick="showHowToPlayFromGameOver()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 8px; border-color: #666; color: #999; background: rgba(255,255,255,0.03); white-space: nowrap;">
-                    <span>📖</span><span>HOW TO PLAY</span>
-                </button>
-                <button id="submitGlobalButton" class="btn" onclick="submitToGlobal()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 8px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15)); border-color: #FFD700; color: #FFD700; white-space: nowrap;">
-                    <span>🌍</span><span>SUBMIT</span>
-                </button>
-            </div>
         </div>
-        
+
         <!-- Master Scoreboard -->
         <div class="scoreboard-container master-scoreboard" style="margin-top: 18px; margin-bottom: 15px;">
             <!-- Main Category Tabs -->
@@ -1200,6 +1191,11 @@
                 <div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">Loading...</div>
             </div>
         </div>
+
+        <!-- How To Play (below scoreboard) -->
+        <button class="btn" onclick="showHowToPlayFromGameOver()" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 16px; border-color: #666; color: #999; background: rgba(255,255,255,0.03); white-space: nowrap; margin: 8px auto 15px auto;">
+            <span>📖</span><span>HOW TO PLAY</span>
+        </button>
     </div>
 
 
@@ -3597,34 +3593,14 @@
             
             // Auto-submit to global leaderboard
             if (database) {
-                // Show loading state on submit button
-                const submitBtn = document.getElementById('submitGlobalButton');
-                submitBtn.innerHTML = '<span>⏳</span><span>SUBMITTING...</span>';
-                submitBtn.disabled = true;
-
                 try {
-                    const result = await submitScore(playerUsername, score);
-                    if (result.success) {
-                        submitBtn.innerHTML = '<span>✅</span><span>SUBMITTED!</span>';
-                        submitBtn.style.borderColor = '#00FF00';
-                        submitBtn.style.color = '#00FF00';
-                    } else {
-                        submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
-                        submitBtn.disabled = false;
-                    }
+                    await submitScore(playerUsername, score);
                 } catch (e) {
-                    submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
-                    submitBtn.disabled = false;
+                    console.error('Auto-submit failed:', e);
                 }
 
-                // Fetch all data and render master scoreboard
+                // Fetch all data for scoreboard
                 await fetchAllScoresData();
-            } else {
-                const submitBtn = document.getElementById('submitGlobalButton');
-                submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
-                submitBtn.style.borderColor = '#FFD700';
-                submitBtn.style.color = '#FFD700';
-                submitBtn.disabled = false;
             }
 
             // Reset scoreboard to default view and render
@@ -3640,57 +3616,6 @@
             
             document.getElementById('gameOverScreen').classList.remove('hidden');
             setScreenVisible(true);
-        }
-
-        // Submit score to global leaderboard
-        async function submitToGlobal() {
-            const button = document.getElementById('submitGlobalButton');
-            const originalText = button.innerHTML;
-            
-            // Show loading state
-            button.innerHTML = '<span>⏳</span><span>SUBMITTING...</span>';
-            button.disabled = true;
-            
-            try {
-                // Submit score using the username from start screen
-                const result = await submitScore(playerUsername, score);
-                
-                if (result.success) {
-                    // Success!
-                    button.innerHTML = '<span>✅</span><span>SUBMITTED!</span>';
-                    button.style.borderColor = '#00FF00';
-                    button.style.color = '#00FF00';
-                    button.disabled = true;
-                    
-                    // Refresh the scoreboard
-                    await fetchAllScoresData();
-                    renderMasterScoreboard();
-                } else {
-                    // Error
-                    button.innerHTML = '<span>⚠️</span><span>' + (result.error || 'ERROR') + '</span>';
-                    button.style.borderColor = '#FF0000';
-                    button.style.color = '#FF0000';
-                    
-                    setTimeout(() => {
-                        button.innerHTML = originalText;
-                        button.style.borderColor = '#FFD700';
-                        button.style.color = '#FFD700';
-                        button.disabled = false;
-                    }, 3000);
-                }
-            } catch (error) {
-                console.error('Submission error:', error);
-                button.innerHTML = '<span>⚠️</span><span>NETWORK ERROR</span>';
-                button.style.borderColor = '#FF0000';
-                button.style.color = '#FF0000';
-                
-                setTimeout(() => {
-                    button.innerHTML = originalText;
-                    button.style.borderColor = '#FFD700';
-                    button.style.color = '#FFD700';
-                    button.disabled = false;
-                }, 3000);
-            }
         }
 
         // Share score function
@@ -3954,18 +3879,26 @@
             return { rankings: [], playerEntry: null };
         }
 
-        // LONGEST RUN: Best single score per player
+        // LONGEST RUN: Best single score per player + most recent
         function getLongestRunData(data) {
-            const bestByUser = {};
+            const userStats = {};
             for (const entry of data) {
                 const name = entry.username || 'Unknown';
-                if (!bestByUser[name] || entry.score > bestByUser[name].score) {
-                    bestByUser[name] = { username: name, value: entry.score, score: entry.score };
+                const ts = entry.timestamp || 0;
+                if (!userStats[name]) {
+                    userStats[name] = { username: name, value: 0, latest: 0, latestTs: 0 };
+                }
+                if (entry.score > userStats[name].value) {
+                    userStats[name].value = entry.score;
+                }
+                if (ts > userStats[name].latestTs) {
+                    userStats[name].latest = entry.score;
+                    userStats[name].latestTs = ts;
                 }
             }
-            const rankings = Object.values(bestByUser).sort((a, b) => b.value - a.value);
+            const rankings = Object.values(userStats).sort((a, b) => b.value - a.value);
             const playerEntry = rankings.find(r => r.username === playerUsername);
-            return { rankings, playerEntry, valueLabel: '', isTime: false };
+            return { rankings, playerEntry, valueLabel: '', isTime: false, showLatest: true };
         }
 
         // TOTAL DISTANCE: Sum of all scores per player
@@ -4059,14 +3992,17 @@
             const banner = document.getElementById('playerPositionBanner');
             if (!board) return;
 
-            const { rankings, playerEntry, isTime, showGames } = getScoreboardData();
+            const { rankings, playerEntry, isTime, showGames, showLatest } = getScoreboardData();
 
             // Player position banner
             if (playerEntry) {
                 const rank = rankings.indexOf(playerEntry) + 1;
                 const displayVal = isTime ? formatRaceTime(playerEntry.value) : playerEntry.value.toLocaleString();
-                const detail = showGames ? `${playerEntry.games} game${playerEntry.games !== 1 ? 's' : ''} played` :
+                let detail = showGames ? `${playerEntry.games} game${playerEntry.games !== 1 ? 's' : ''} played` :
                     `out of ${rankings.length} player${rankings.length !== 1 ? 's' : ''}`;
+                if (showLatest && playerEntry.latest !== undefined && playerEntry.latest !== playerEntry.value) {
+                    detail = `Best: ${displayVal} · Last: ${playerEntry.latest}`;
+                }
                 banner.innerHTML = `
                     <div class="player-position">
                         <div class="pos-rank">YOUR RANK: #${rank}</div>
@@ -4090,19 +4026,19 @@
             const playerRankInList = playerEntry ? rankings.indexOf(playerEntry) : -1;
             const showPlayerSeparately = playerRankInList >= topCount;
 
-            let html = top.map((entry, index) => renderScoreEntry(entry, index, rankings.length, isTime, showGames)).join('');
+            let html = top.map((entry, index) => renderScoreEntry(entry, index, rankings.length, isTime, showGames, false, showLatest)).join('');
 
             // If player is outside top, show separator and their row
             if (showPlayerSeparately && playerEntry) {
                 html += `<div style="text-align: center; color: #555; padding: 4px; font-size: 11px; letter-spacing: 2px;">· · ·</div>`;
-                html += renderScoreEntry(playerEntry, playerRankInList, rankings.length, isTime, showGames, true);
+                html += renderScoreEntry(playerEntry, playerRankInList, rankings.length, isTime, showGames, true, showLatest);
             }
 
             board.innerHTML = html;
         }
 
         // Render a single score entry row
-        function renderScoreEntry(entry, index, total, isTime, showGames, highlight) {
+        function renderScoreEntry(entry, index, total, isTime, showGames, highlight, showLatest) {
             let medal = '';
             let style = '';
 
@@ -4127,11 +4063,13 @@
 
             const displayVal = isTime ? formatRaceTime(entry.value) : entry.value.toLocaleString();
             const gamesStr = showGames && entry.games ? ` <span style="font-size: 9px; color: #aaa;">(${entry.games})</span>` : '';
+            const latestStr = showLatest && entry.latest !== undefined && entry.latest !== entry.value
+                ? `<div style="font-size: 9px; color: #aaa; margin-top: 1px;">Last: ${entry.latest}</div>` : '';
 
             return `
                 <div class="score-entry" ${style ? `style="${style}"` : ''}>
                     <span class="rank">${medal || '#' + (index + 1)}</span>
-                    <span class="username">${escapeHtml(entry.username)}</span>
+                    <span class="username">${escapeHtml(entry.username)}${latestStr}</span>
                     <span class="points" style="font-size: 13px;">${displayVal}${gamesStr}</span>
                 </div>
             `;
