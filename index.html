@@ -2707,21 +2707,25 @@
             // Draw active power-up indicators (bigger, lower on mobile)
             const isMobileCanvas = canvas.width < 500;
             let offsetY = isMobileCanvas ? canvas.height * 0.35 : 100;
-            const fontSize = isMobileCanvas ? 22 : 20;
+            const fontSize = isMobileCanvas ? 20 : 18;
             const lineHeight = isMobileCanvas ? 34 : 30;
+            const padding = 10;
             activePowerUps.forEach(powerUp => {
                 ctx.save();
                 const colors = { SHIELD: '#00FFD1', MAGNET: '#FF006B' };
-                const icons = { SHIELD: '🛡️', MAGNET: '🧲' };
                 const color = colors[powerUp.type];
-                const timeStr = (powerUp.timeLeft/1000).toFixed(1) + 's';
+                const label = `${powerUp.type}: ${(powerUp.timeLeft/1000).toFixed(1)}s`;
+
+                // Measure text to size pill
+                ctx.font = `bold ${fontSize}px Oswald`;
+                const textW = ctx.measureText(label).width;
+                const pillW = textW + padding * 2;
+                const pillH = fontSize + padding;
+                const pillX = canvas.width - pillW - 8;
+                const pillY = offsetY - pillH / 2;
 
                 // Background pill
-                const pillW = isMobileCanvas ? 130 : 150;
-                const pillH = isMobileCanvas ? 28 : 26;
-                const pillX = canvas.width - pillW - 10;
-                const pillY = offsetY - pillH / 2 - 2;
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
                 ctx.beginPath();
                 ctx.roundRect(pillX, pillY, pillW, pillH, 6);
                 ctx.fill();
@@ -2733,11 +2737,11 @@
 
                 // Text
                 ctx.fillStyle = color;
-                ctx.font = `bold ${fontSize}px Oswald`;
                 ctx.textAlign = 'right';
-                ctx.shadowBlur = 12;
+                ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 10;
                 ctx.shadowColor = color;
-                ctx.fillText(`${icons[powerUp.type]} ${powerUp.type}: ${timeStr}`, canvas.width - 16, offsetY);
+                ctx.fillText(label, canvas.width - 8 - padding, offsetY);
                 offsetY += lineHeight;
                 ctx.restore();
             });
