@@ -2626,10 +2626,12 @@
             
             powerUps = powerUps.filter(p => p.x > -50);
             
-            // Update active power-ups — use real ms elapsed
-            const msElapsed = 16.667 * dt;
+            // Update active power-ups — use real wall-clock time (not clamped game dt)
+            const now = performance.now();
             for (let i = activePowerUps.length - 1; i >= 0; i--) {
-                activePowerUps[i].timeLeft -= msElapsed;
+                if (activePowerUps[i].startTime) {
+                    activePowerUps[i].timeLeft = activePowerUps[i].duration - (now - activePowerUps[i].startTime);
+                }
                 if (activePowerUps[i].timeLeft <= 0) {
                     activePowerUps.splice(i, 1);
                 }
@@ -2656,12 +2658,16 @@
             
             if (existingPowerUp) {
                 // Refresh the timer
+                existingPowerUp.startTime = performance.now();
+                existingPowerUp.duration = durations[type];
                 existingPowerUp.timeLeft = durations[type];
             } else {
                 // Add new power-up
                 activePowerUps.push({
                     type: type,
-                    timeLeft: durations[type]
+                    timeLeft: durations[type],
+                    startTime: performance.now(),
+                    duration: durations[type]
                 });
                 
                 // If it's MAGNET, schedule 5 bonus coins over 7 seconds
@@ -2709,18 +2715,19 @@
             let offsetY = isMobileCanvas ? canvas.height * 0.35 : 100;
             const fontSize = isMobileCanvas ? 20 : 18;
             const lineHeight = isMobileCanvas ? 34 : 30;
-            const padding = 10;
+            const paddingH = 16;
+            const paddingV = 14;
             activePowerUps.forEach(powerUp => {
                 ctx.save();
                 const colors = { SHIELD: '#00FFD1', MAGNET: '#FF006B' };
                 const color = colors[powerUp.type];
-                const label = `${powerUp.type}: ${(powerUp.timeLeft/1000).toFixed(1)}s`;
+                const label = `${powerUp.type}: ${Math.max(0, powerUp.timeLeft/1000).toFixed(1)}s`;
 
                 // Measure text to size pill
                 ctx.font = `bold ${fontSize}px Oswald`;
                 const textW = ctx.measureText(label).width;
-                const pillW = textW + padding * 2;
-                const pillH = fontSize + padding;
+                const pillW = textW + paddingH * 2;
+                const pillH = fontSize + paddingV;
                 const pillX = canvas.width - pillW - 8;
                 const pillY = offsetY - pillH / 2;
 
@@ -2741,7 +2748,7 @@
                 ctx.textBaseline = 'middle';
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = color;
-                ctx.fillText(label, canvas.width - 8 - padding, offsetY);
+                ctx.fillText(label, canvas.width - 8 - paddingH, offsetY);
                 offsetY += lineHeight;
                 ctx.restore();
             });
