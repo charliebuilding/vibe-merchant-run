@@ -442,16 +442,20 @@
             box-shadow: 0 0 15px #00FFD1;
         }
 
-        .cumulative-tabs {
+        .master-scoreboard {
+            max-height: 500px;
+            min-height: 300px;
+        }
+        .main-tabs {
             display: flex;
             gap: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             justify-content: center;
         }
-        .cumulative-tab {
+        .main-tab {
             font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            padding: 6px 10px;
+            font-size: 9px;
+            padding: 8px 10px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid #444;
             border-radius: 6px;
@@ -459,34 +463,112 @@
             cursor: pointer;
             letter-spacing: 1px;
             transition: all 0.3s;
+            white-space: nowrap;
         }
-        .cumulative-tab.active {
+        .main-tab.active {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: #00ffff;
+            color: #00ffff;
+            text-shadow: 0 0 8px #00ffff;
+        }
+        .filter-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 6px;
+        }
+        .time-filters {
+            display: flex;
+            gap: 3px;
+        }
+        .time-filter {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #666;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .time-filter.active {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+        .scope-toggle {
+            display: flex;
+            gap: 3px;
+        }
+        .scope-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #666;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .scope-btn.active {
+            background: rgba(0, 255, 255, 0.15);
+            border-color: #00ffff;
+            color: #00ffff;
+        }
+        .race-distance-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            justify-content: center;
+        }
+        .race-dist {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #888;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .race-dist.active {
             background: rgba(255, 0, 255, 0.2);
             border-color: #ff00ff;
             color: #ff00ff;
             text-shadow: 0 0 8px #ff00ff;
         }
-        .cumulative-your-total {
+        #playerPositionBanner {
+            margin-bottom: 8px;
+        }
+        .player-position {
             text-align: center;
             padding: 10px;
-            background: rgba(255, 0, 255, 0.1);
+            background: rgba(255, 215, 0, 0.12);
+            border: 1px solid rgba(255, 215, 0, 0.3);
             border-radius: 8px;
-            margin-bottom: 10px;
         }
-        .cumulative-your-total .label {
-            font-size: 11px;
-            color: #ff00ff;
-            letter-spacing: 2px;
-            margin-bottom: 4px;
-        }
-        .cumulative-your-total .value {
+        .player-position .pos-rank {
             font-family: 'Orbitron', sans-serif;
-            font-size: 22px;
+            font-size: 11px;
+            color: #FFD700;
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+        }
+        .player-position .pos-score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
             color: #fff;
             font-weight: bold;
-            text-shadow: 0 0 10px #ff00ff;
+            text-shadow: 0 0 10px #FFD700;
         }
-        .cumulative-your-total .games {
+        .player-position .pos-detail {
             font-size: 11px;
             color: #aaa;
             margin-top: 2px;
@@ -1080,34 +1162,43 @@
             </div>
         </div>
         
-        <!-- Global Leaderboard -->
-        <div class="scoreboard-container" style="margin-top: 18px; margin-bottom: 10px;">
-            <div class="scoreboard-title" style="margin-bottom: 4px; font-size: 18px;">🌍 GLOBAL TOP 10</div>
-            <div id="globalRankDisplay"></div>
-            <div id="globalLeaderboard">
-                <div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">Loading...</div>
+        <!-- Master Scoreboard -->
+        <div class="scoreboard-container master-scoreboard" style="margin-top: 18px; margin-bottom: 15px;">
+            <!-- Main Category Tabs -->
+            <div class="main-tabs">
+                <button class="main-tab active" onclick="switchMainTab('longest')">LONGEST RUN</button>
+                <button class="main-tab" onclick="switchMainTab('total')">TOTAL DISTANCE</button>
+                <button class="main-tab" onclick="switchMainTab('races')">RACES</button>
             </div>
-        </div>
-        
-        <!-- Cumulative Leaderboard -->
-        <div class="scoreboard-container" style="margin-top: 8px; margin-bottom: 10px; border-color: #ff00ff; box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);">
-            <div class="scoreboard-title" style="margin-bottom: 4px; font-size: 18px; color: #ff00ff; text-shadow: 0 0 10px #ff00ff;">🔥 TOTAL SCORES</div>
-            <div class="cumulative-tabs">
-                <button class="cumulative-tab active" onclick="switchCumulativeTab('day')">TODAY</button>
-                <button class="cumulative-tab" onclick="switchCumulativeTab('week')">WEEK</button>
-                <button class="cumulative-tab" onclick="switchCumulativeTab('month')">MONTH</button>
-                <button class="cumulative-tab" onclick="switchCumulativeTab('all')">ALL TIME</button>
-            </div>
-            <div id="cumulativeYourTotal" class="cumulative-your-total" style="display: none;"></div>
-            <div id="cumulativeLeaderboard">
-                <div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">Loading...</div>
-            </div>
-        </div>
 
-        <!-- Local Leaderboard -->
-        <div class="scoreboard-container" style="margin-top: 8px; margin-bottom: 15px;">
-            <div class="scoreboard-title" style="margin-bottom: 4px; font-size: 18px;">📱 YOUR SCORES</div>
-            <div id="leaderboard"></div>
+            <!-- Filter Row: Time + Scope -->
+            <div class="filter-row">
+                <div class="time-filters">
+                    <button class="time-filter active" onclick="switchTimeFilter('today')">TODAY</button>
+                    <button class="time-filter" onclick="switchTimeFilter('weekly')">WEEKLY</button>
+                    <button class="time-filter" onclick="switchTimeFilter('alltime')">ALL TIME</button>
+                </div>
+                <div class="scope-toggle">
+                    <button class="scope-btn" onclick="switchScope('local')">LOCAL</button>
+                    <button class="scope-btn active" onclick="switchScope('global')">GLOBAL</button>
+                </div>
+            </div>
+
+            <!-- Race Distance Tabs (only visible on Races tab) -->
+            <div id="raceDistanceTabs" class="race-distance-tabs" style="display: none;">
+                <button class="race-dist active" onclick="switchRaceDistance('5k')">5K</button>
+                <button class="race-dist" onclick="switchRaceDistance('10k')">10K</button>
+                <button class="race-dist" onclick="switchRaceDistance('21.1k')">21.1K</button>
+                <button class="race-dist" onclick="switchRaceDistance('42.2k')">42.2K</button>
+            </div>
+
+            <!-- Player Position Banner -->
+            <div id="playerPositionBanner"></div>
+
+            <!-- Leaderboard Entries -->
+            <div id="masterLeaderboard">
+                <div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">Loading...</div>
+            </div>
         </div>
     </div>
 
@@ -1230,6 +1321,9 @@
         let dt = 1; // Delta time multiplier (1.0 = 60fps)
         let lastFrameTime = 0;
         let scoreAccumulator = 0; // Time-based score ticking
+        let gameStartTimestamp = 0; // When current game started (ms)
+        let raceMilestones = {}; // { '5k': timeMs, '10k': timeMs, ... }
+        const RACE_THRESHOLDS = { '5k': 500, '10k': 1000, '21.1k': 2110, '42.2k': 4220 };
         
         // Firebase Configuration
         const firebaseConfig = {
@@ -2914,7 +3008,14 @@
                 const oldScore = score;
                 score++;
                 document.getElementById('score').textContent = score;
-                
+
+                // Check race milestones
+                for (const [key, threshold] of Object.entries(RACE_THRESHOLDS)) {
+                    if (oldScore < threshold && score >= threshold && !raceMilestones[key]) {
+                        raceMilestones[key] = Date.now() - gameStartTimestamp;
+                    }
+                }
+
                 // Check if player just beat the challenge score
                 if (challengeScore !== null && !challengeBeaten && score > challengeScore) {
                     challengeBeaten = true;
@@ -3236,9 +3337,15 @@
                     username: cleanedUsername,
                     score: score,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    sessionId: sessionId
+                    sessionId: sessionId,
+                    gameDuration: Date.now() - gameStartTimestamp
                 };
-                
+
+                // Include race milestones if any were reached
+                if (Object.keys(raceMilestones).length > 0) {
+                    scoreEntry.raceTimes = raceMilestones;
+                }
+
                 // Push to database
                 await database.ref('scores').push(scoreEntry);
                 
@@ -3360,6 +3467,8 @@
             confettiParticles = [];
             screenShake = { active: false, intensity: 0, duration: 0, elapsed: 0 };
             nearMissJustAwarded = false;
+            gameStartTimestamp = Date.now();
+            raceMilestones = {};
             challengeBeaten = false;
             challengeBeatFlashFrames = 0;
             lastFrameTime = 0;
@@ -3472,25 +3581,27 @@
             document.getElementById('personalBestScore').textContent = personalBest;
             document.getElementById('coinsCollected').textContent = totalCoinsCollected;
             
-            // Update local leaderboard (kept for backwards compatibility)
+            // Update local leaderboard
             const scores = loadScores();
-            scores.push({
+            const localEntry = {
                 username: playerUsername,
                 score: score,
-                timestamp: new Date().toISOString()
-            });
+                timestamp: new Date().toISOString(),
+                gameDuration: Date.now() - gameStartTimestamp
+            };
+            if (Object.keys(raceMilestones).length > 0) {
+                localEntry.raceTimes = raceMilestones;
+            }
+            scores.push(localEntry);
             saveScores(scores);
             
-            // Display local leaderboard
-            displayLeaderboard();
-            
-            // Auto-submit to global leaderboard and display top 10
+            // Auto-submit to global leaderboard
             if (database) {
                 // Show loading state on submit button
                 const submitBtn = document.getElementById('submitGlobalButton');
                 submitBtn.innerHTML = '<span>⏳</span><span>SUBMITTING...</span>';
                 submitBtn.disabled = true;
-                
+
                 try {
                     const result = await submitScore(playerUsername, score);
                     if (result.success) {
@@ -3498,7 +3609,6 @@
                         submitBtn.style.borderColor = '#00FF00';
                         submitBtn.style.color = '#00FF00';
                     } else {
-                        // Allow manual retry
                         submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                         submitBtn.disabled = false;
                     }
@@ -3506,28 +3616,27 @@
                     submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                     submitBtn.disabled = false;
                 }
-                
-                // Fetch and display global top 10
-                await fetchLeaderboard();
-                playerRank = getPlayerRank(score);
-                displayGlobalLeaderboard();
 
-                // Fetch and display cumulative leaderboard
-                await fetchCumulativeData();
-                currentCumulativeTab = 'day';
-                document.querySelectorAll('.cumulative-tab').forEach((tab, i) => {
-                    tab.classList.toggle('active', i === 0);
-                });
-                displayCumulativeLeaderboard();
+                // Fetch all data and render master scoreboard
+                await fetchAllScoresData();
             } else {
-                // No Firebase — reset submit button for manual use
                 const submitBtn = document.getElementById('submitGlobalButton');
                 submitBtn.innerHTML = '<span>🌍</span><span>SUBMIT</span>';
                 submitBtn.style.borderColor = '#FFD700';
                 submitBtn.style.color = '#FFD700';
                 submitBtn.disabled = false;
-                displayGlobalLeaderboard();
             }
+
+            // Reset scoreboard to default view and render
+            currentMainTab = 'longest';
+            currentTimeFilter = 'today';
+            currentScope = 'global';
+            document.querySelectorAll('.main-tab').forEach((el, i) => el.classList.toggle('active', i === 0));
+            document.querySelectorAll('.time-filter').forEach((el, i) => el.classList.toggle('active', i === 0));
+            document.querySelectorAll('.scope-btn').forEach((el, i) => el.classList.toggle('active', i === 1));
+            document.getElementById('raceDistanceTabs').style.display = 'none';
+            document.querySelectorAll('.time-filter')[2].style.display = '';
+            renderMasterScoreboard();
             
             document.getElementById('gameOverScreen').classList.remove('hidden');
             setScreenVisible(true);
@@ -3553,10 +3662,9 @@
                     button.style.color = '#00FF00';
                     button.disabled = true;
                     
-                    // Refresh the global leaderboard display
-                    await fetchLeaderboard();
-                    playerRank = getPlayerRank(score);
-                    displayGlobalLeaderboard();
+                    // Refresh the scoreboard
+                    await fetchAllScoresData();
+                    renderMasterScoreboard();
                 } else {
                     // Error
                     button.innerHTML = '<span>⚠️</span><span>' + (result.error || 'ERROR') + '</span>';
@@ -3772,188 +3880,261 @@
         }
         
         // Display global leaderboard from Firebase
-        function displayGlobalLeaderboard() {
-            const globalBoard = document.getElementById('globalLeaderboard');
-            const rankDisplay = document.getElementById('globalRankDisplay');
-            
-            if (!globalBoard) return;
-            
-            // Display player rank
-            if (playerRank && rankDisplay) {
-                const totalPlayers = globalLeaderboard.length;
-                rankDisplay.innerHTML = `
-                    <div style="text-align: center; padding: 15px; background: rgba(255, 215, 0, 0.2); border-radius: 10px; margin-bottom: 15px;">
-                        <div style="font-size: 14px; color: #FFD700; margin-bottom: 5px;">🏆 YOUR GLOBAL RANK</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #fff;">#${playerRank}</div>
-                        <div style="font-size: 12px; color: #aaa; margin-top: 5px;">out of ${totalPlayers} players</div>
-                    </div>
-                `;
-            }
-            
-            // Display top 10 global leaderboard
-            if (globalLeaderboard.length === 0) {
-                globalBoard.innerHTML = '<div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">No global scores yet — be the first!</div>';
-                return;
-            }
-            
-            const top10 = globalLeaderboard.slice(0, 10);
-            
-            globalBoard.innerHTML = top10.map((entry, index) => {
-                let medal = '';
-                let borderClass = '';
-                
-                if (index === 0) {
-                    medal = '🥇';
-                    borderClass = 'style="border: 2px solid #FFD700; background: rgba(255, 215, 0, 0.1);"';
-                } else if (index === 1) {
-                    medal = '🥈';
-                    borderClass = 'style="border: 2px solid #C0C0C0; background: rgba(192, 192, 192, 0.1);"';
-                } else if (index === 2) {
-                    medal = '🥉';
-                    borderClass = 'style="border: 2px solid #CD7F32; background: rgba(205, 127, 50, 0.1);"';
-                }
-                
-                return `
-                <div class="score-entry" ${borderClass}>
-                    <span class="rank">${medal || '#' + (index + 1)}</span>
-                    <span class="username">${escapeHtml(entry.username)}</span>
-                    <span class="points">${entry.score}</span>
-                </div>
-            `}).join('');
-        }
+        // ========== MASTER SCOREBOARD SYSTEM ==========
+        let allScoresData = []; // All scores from Firebase
+        let currentMainTab = 'longest'; // longest | total | races
+        let currentTimeFilter = 'today'; // today | weekly | alltime
+        let currentScope = 'global'; // local | global
+        let currentRaceDistance = '5k'; // 5k | 10k | 21.1k | 42.2k
 
-        // Cumulative leaderboard state
-        let cumulativeData = []; // All scores from Firebase
-        let currentCumulativeTab = 'day';
-
-        // Fetch all scores for cumulative aggregation
-        async function fetchCumulativeData() {
+        // Fetch all scores from Firebase for aggregation
+        async function fetchAllScoresData() {
             if (!database) return;
-
             try {
                 const snapshot = await database.ref('scores').once('value');
-                cumulativeData = [];
+                allScoresData = [];
                 snapshot.forEach((childSnapshot) => {
-                    cumulativeData.push(childSnapshot.val());
+                    allScoresData.push(childSnapshot.val());
                 });
-                console.log('📊 Cumulative data fetched:', cumulativeData.length, 'total scores');
+                console.log('📊 All scores fetched:', allScoresData.length, 'entries');
             } catch (error) {
-                console.error('Error fetching cumulative data:', error);
+                console.error('Error fetching all scores:', error);
             }
         }
 
-        // Aggregate cumulative scores by time period
-        function aggregateCumulativeScores(period) {
-            const now = Date.now();
-            let cutoff;
-
-            if (period === 'day') {
+        // Get time cutoff for filter
+        function getTimeCutoff(filter) {
+            if (filter === 'today') {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                cutoff = today.getTime();
-            } else if (period === 'week') {
+                return today.getTime();
+            } else if (filter === 'weekly') {
                 const weekAgo = new Date();
                 weekAgo.setDate(weekAgo.getDate() - 7);
                 weekAgo.setHours(0, 0, 0, 0);
-                cutoff = weekAgo.getTime();
-            } else if (period === 'month') {
-                const monthAgo = new Date();
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                monthAgo.setHours(0, 0, 0, 0);
-                cutoff = monthAgo.getTime();
-            } else {
-                cutoff = 0; // All time
+                return weekAgo.getTime();
             }
-
-            // Filter by time period and aggregate by username
-            const userTotals = {};
-
-            for (const entry of cumulativeData) {
-                if (entry.timestamp < cutoff) continue;
-
-                const username = entry.username || 'Unknown';
-                if (!userTotals[username]) {
-                    userTotals[username] = { totalScore: 0, games: 0 };
-                }
-                userTotals[username].totalScore += entry.score;
-                userTotals[username].games += 1;
-            }
-
-            // Convert to sorted array
-            return Object.entries(userTotals)
-                .map(([username, data]) => ({ username, totalScore: data.totalScore, games: data.games }))
-                .sort((a, b) => b.totalScore - a.totalScore);
+            return 0; // all time
         }
 
-        // Switch cumulative tab
-        function switchCumulativeTab(period) {
-            currentCumulativeTab = period;
+        // Format time in mm:ss.s
+        function formatRaceTime(ms) {
+            const totalSec = ms / 1000;
+            const mins = Math.floor(totalSec / 60);
+            const secs = (totalSec % 60).toFixed(1);
+            return mins > 0 ? `${mins}:${secs.padStart(4, '0')}` : `${secs}s`;
+        }
 
-            // Update active tab styling
-            const tabMap = { day: 0, week: 1, month: 2, all: 3 };
-            document.querySelectorAll('.cumulative-tab').forEach((tab, i) => {
-                tab.classList.toggle('active', i === tabMap[period]);
+        // Get data for current tab/filter/scope
+        function getScoreboardData() {
+            const cutoff = getTimeCutoff(currentTimeFilter);
+            let sourceData;
+
+            if (currentScope === 'local') {
+                const localScores = loadScores();
+                // Convert local timestamps to ms for filtering
+                sourceData = localScores.map(s => ({
+                    ...s,
+                    timestamp: typeof s.timestamp === 'string' ? new Date(s.timestamp).getTime() : s.timestamp
+                }));
+            } else {
+                sourceData = allScoresData;
+            }
+
+            // Filter by time
+            const filtered = sourceData.filter(s => (s.timestamp || 0) >= cutoff);
+
+            if (currentMainTab === 'longest') {
+                return getLongestRunData(filtered);
+            } else if (currentMainTab === 'total') {
+                return getTotalDistanceData(filtered);
+            } else if (currentMainTab === 'races') {
+                return getRacesData(filtered);
+            }
+            return { rankings: [], playerEntry: null };
+        }
+
+        // LONGEST RUN: Best single score per player
+        function getLongestRunData(data) {
+            const bestByUser = {};
+            for (const entry of data) {
+                const name = entry.username || 'Unknown';
+                if (!bestByUser[name] || entry.score > bestByUser[name].score) {
+                    bestByUser[name] = { username: name, value: entry.score, score: entry.score };
+                }
+            }
+            const rankings = Object.values(bestByUser).sort((a, b) => b.value - a.value);
+            const playerEntry = rankings.find(r => r.username === playerUsername);
+            return { rankings, playerEntry, valueLabel: '', isTime: false };
+        }
+
+        // TOTAL DISTANCE: Sum of all scores per player
+        function getTotalDistanceData(data) {
+            const totals = {};
+            for (const entry of data) {
+                const name = entry.username || 'Unknown';
+                if (!totals[name]) totals[name] = { username: name, value: 0, games: 0 };
+                totals[name].value += entry.score;
+                totals[name].games += 1;
+            }
+            const rankings = Object.values(totals).sort((a, b) => b.value - a.value);
+            const playerEntry = rankings.find(r => r.username === playerUsername);
+            return { rankings, playerEntry, valueLabel: '', isTime: false, showGames: true };
+        }
+
+        // RACES: Fastest time to reach distance milestone
+        function getRacesData(data) {
+            const dist = currentRaceDistance;
+            const bestByUser = {};
+
+            for (const entry of data) {
+                if (!entry.raceTimes || !entry.raceTimes[dist]) continue;
+                const name = entry.username || 'Unknown';
+                const time = entry.raceTimes[dist];
+                if (!bestByUser[name] || time < bestByUser[name].value) {
+                    bestByUser[name] = { username: name, value: time };
+                }
+            }
+
+            // Sort ascending (fastest first)
+            const rankings = Object.values(bestByUser).sort((a, b) => a.value - b.value);
+            const playerEntry = rankings.find(r => r.username === playerUsername);
+            return { rankings, playerEntry, valueLabel: '', isTime: true };
+        }
+
+        // Tab switching functions
+        function switchMainTab(tab) {
+            currentMainTab = tab;
+            document.querySelectorAll('.main-tab').forEach((el, i) => {
+                el.classList.toggle('active', ['longest', 'total', 'races'][i] === tab);
             });
 
-            displayCumulativeLeaderboard();
+            // Show/hide race distance tabs
+            document.getElementById('raceDistanceTabs').style.display = tab === 'races' ? 'flex' : 'none';
+
+            // Hide "All Time" for races
+            const timeButtons = document.querySelectorAll('.time-filter');
+            if (tab === 'races') {
+                timeButtons[2].style.display = 'none';
+                if (currentTimeFilter === 'alltime') {
+                    switchTimeFilter('weekly');
+                    return; // switchTimeFilter will call renderMasterScoreboard
+                }
+            } else {
+                timeButtons[2].style.display = '';
+            }
+
+            renderMasterScoreboard();
         }
 
-        // Display cumulative leaderboard
-        function displayCumulativeLeaderboard() {
-            const board = document.getElementById('cumulativeLeaderboard');
-            const yourTotalEl = document.getElementById('cumulativeYourTotal');
+        function switchTimeFilter(filter) {
+            currentTimeFilter = filter;
+            const filterMap = { today: 0, weekly: 1, alltime: 2 };
+            document.querySelectorAll('.time-filter').forEach((el, i) => {
+                el.classList.toggle('active', i === filterMap[filter]);
+            });
+            renderMasterScoreboard();
+        }
+
+        function switchScope(scope) {
+            currentScope = scope;
+            document.querySelectorAll('.scope-btn').forEach((el, i) => {
+                el.classList.toggle('active', ['local', 'global'][i] === scope);
+            });
+            renderMasterScoreboard();
+        }
+
+        function switchRaceDistance(dist) {
+            currentRaceDistance = dist;
+            const distMap = { '5k': 0, '10k': 1, '21.1k': 2, '42.2k': 3 };
+            document.querySelectorAll('.race-dist').forEach((el, i) => {
+                el.classList.toggle('active', i === distMap[dist]);
+            });
+            renderMasterScoreboard();
+        }
+
+        // Render the master scoreboard
+        function renderMasterScoreboard() {
+            const board = document.getElementById('masterLeaderboard');
+            const banner = document.getElementById('playerPositionBanner');
             if (!board) return;
 
-            const rankings = aggregateCumulativeScores(currentCumulativeTab);
+            const { rankings, playerEntry, isTime, showGames } = getScoreboardData();
+
+            // Player position banner
+            if (playerEntry) {
+                const rank = rankings.indexOf(playerEntry) + 1;
+                const displayVal = isTime ? formatRaceTime(playerEntry.value) : playerEntry.value.toLocaleString();
+                const detail = showGames ? `${playerEntry.games} game${playerEntry.games !== 1 ? 's' : ''} played` :
+                    `out of ${rankings.length} player${rankings.length !== 1 ? 's' : ''}`;
+                banner.innerHTML = `
+                    <div class="player-position">
+                        <div class="pos-rank">YOUR RANK: #${rank}</div>
+                        <div class="pos-score">${displayVal}</div>
+                        <div class="pos-detail">${detail}</div>
+                    </div>
+                `;
+            } else {
+                banner.innerHTML = '';
+            }
 
             if (rankings.length === 0) {
-                board.innerHTML = '<div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">No scores yet for this period</div>';
-                yourTotalEl.style.display = 'none';
+                const msg = currentMainTab === 'races' ? 'No race times yet — be the first to hit ' + currentRaceDistance.toUpperCase() + '!' : 'No scores yet for this period';
+                board.innerHTML = `<div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">${msg}</div>`;
                 return;
             }
 
-            // Show current player's cumulative total
-            const playerData = rankings.find(r => r.username === playerUsername);
-            if (playerData) {
-                const playerRankCumulative = rankings.indexOf(playerData) + 1;
-                yourTotalEl.style.display = 'block';
-                yourTotalEl.innerHTML = `
-                    <div class="label">YOUR TOTAL (#${playerRankCumulative})</div>
-                    <div class="value">${playerData.totalScore.toLocaleString()}</div>
-                    <div class="games">${playerData.games} game${playerData.games !== 1 ? 's' : ''} played</div>
-                `;
-            } else {
-                yourTotalEl.style.display = 'none';
+            // Show top entries + player's position if not in top
+            const topCount = 10;
+            const top = rankings.slice(0, topCount);
+            const playerRankInList = playerEntry ? rankings.indexOf(playerEntry) : -1;
+            const showPlayerSeparately = playerRankInList >= topCount;
+
+            let html = top.map((entry, index) => renderScoreEntry(entry, index, rankings.length, isTime, showGames)).join('');
+
+            // If player is outside top, show separator and their row
+            if (showPlayerSeparately && playerEntry) {
+                html += `<div style="text-align: center; color: #555; padding: 4px; font-size: 11px; letter-spacing: 2px;">· · ·</div>`;
+                html += renderScoreEntry(playerEntry, playerRankInList, rankings.length, isTime, showGames, true);
             }
 
-            // Show top 10
-            const top10 = rankings.slice(0, 10);
-            board.innerHTML = top10.map((entry, index) => {
-                let medal = '';
-                let borderClass = '';
+            board.innerHTML = html;
+        }
 
-                if (index === 0) {
-                    medal = '🥇';
-                    borderClass = 'style="border: 2px solid #FFD700; background: rgba(255, 215, 0, 0.1);"';
-                } else if (index === 1) {
-                    medal = '🥈';
-                    borderClass = 'style="border: 2px solid #C0C0C0; background: rgba(192, 192, 192, 0.1);"';
-                } else if (index === 2) {
-                    medal = '🥉';
-                    borderClass = 'style="border: 2px solid #CD7F32; background: rgba(205, 127, 50, 0.1);"';
-                }
+        // Render a single score entry row
+        function renderScoreEntry(entry, index, total, isTime, showGames, highlight) {
+            let medal = '';
+            let style = '';
 
-                const isCurrentPlayer = entry.username === playerUsername;
-                const highlight = isCurrentPlayer ? 'border: 1px solid #ff00ff; background: rgba(255, 0, 255, 0.1);' : '';
-                const finalStyle = borderClass ? borderClass : (highlight ? `style="${highlight}"` : '');
+            if (index === 0) {
+                medal = '🥇';
+                style = 'border: 2px solid #FFD700; background: rgba(255, 215, 0, 0.1);';
+            } else if (index === 1) {
+                medal = '🥈';
+                style = 'border: 2px solid #C0C0C0; background: rgba(192, 192, 192, 0.1);';
+            } else if (index === 2) {
+                medal = '🥉';
+                style = 'border: 2px solid #CD7F32; background: rgba(205, 127, 50, 0.1);';
+            }
 
-                return `
-                <div class="score-entry" ${finalStyle}>
+            const isCurrentPlayer = entry.username === playerUsername;
+            if (isCurrentPlayer && !style) {
+                style = 'border: 1px solid #00ffff; background: rgba(0, 255, 255, 0.08);';
+            }
+            if (highlight) {
+                style = 'border: 1px solid #FFD700; background: rgba(255, 215, 0, 0.08);';
+            }
+
+            const displayVal = isTime ? formatRaceTime(entry.value) : entry.value.toLocaleString();
+            const gamesStr = showGames && entry.games ? ` <span style="font-size: 9px; color: #aaa;">(${entry.games})</span>` : '';
+
+            return `
+                <div class="score-entry" ${style ? `style="${style}"` : ''}>
                     <span class="rank">${medal || '#' + (index + 1)}</span>
                     <span class="username">${escapeHtml(entry.username)}</span>
-                    <span class="points" style="font-size: 13px;">${entry.totalScore.toLocaleString()} <span style="font-size: 9px; color: #aaa;">(${entry.games})</span></span>
+                    <span class="points" style="font-size: 13px;">${displayVal}${gamesStr}</span>
                 </div>
-            `}).join('');
+            `;
         }
 
         // Escape HTML to prevent XSS
@@ -3985,7 +4166,6 @@
         
         // Initialize
         initializeLeaderboard();
-        displayLeaderboard();
 
         // Show challenge banner if URL has challenge params
         if (challengeScore !== null) {
