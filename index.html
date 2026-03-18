@@ -4380,16 +4380,13 @@
         }, { passive: true });
 
         document.addEventListener('touchmove', function(e) {
-            // Block scrolling during active gameplay
+            // Block scrolling during active gameplay only
             if (gameActive && !gamePaused) {
                 e.preventDefault();
                 return;
             }
-            // Prevent pull-to-refresh when at top of page
-            const y = e.touches[0].pageY;
-            if (y > startY && window.pageYOffset === 0) {
-                e.preventDefault();
-            }
+            // Allow free scrolling on start/game-over screens
+            // Only prevent pull-to-refresh on canvas during non-overlay states
         }, { passive: false });
 
         // Prevent double-tap zoom on iOS (only during gameplay)
