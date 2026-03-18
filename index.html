@@ -1131,15 +1131,15 @@
         
         <!-- Action Buttons -->
         <div style="display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 340px; margin: 0 auto;">
-            <!-- Share Score - Primary CTA -->
-            <button id="shareButton" class="btn" onclick="shareScore()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 0, 107, 0.2), rgba(255, 0, 255, 0.2)); border-color: #FF006B; white-space: nowrap;">
-                <span>📸</span><span>SHARE SCORE</span>
-            </button>
-
-            <!-- Book RTW -->
+            <!-- Book RTW - Primary CTA -->
             <a href="https://www.letsdothis.com/gb/checkout/ticket?preferred=true&eventId=248572&occurrenceId=21111161678&utm_source=website&utm_medium=social&utm_campaign=jump-game&utm_organiser_id=171180" target="_blank" rel="noopener" class="btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2)); border-color: #FFD700; color: #FFD700; text-decoration: none; white-space: nowrap;">
                 <span>🏃</span><span>BOOK RUN THE WHARF</span>
             </a>
+
+            <!-- Share Score -->
+            <button id="shareButton" class="btn" onclick="shareScore()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 0, 107, 0.2), rgba(255, 0, 255, 0.2)); border-color: #FF006B; white-space: nowrap;">
+                <span>📸</span><span>SHARE SCORE</span>
+            </button>
 
             <!-- Row: Play Again + Challenge side by side -->
             <div style="display: flex; gap: 8px;">
@@ -1319,7 +1319,7 @@
         let scoreAccumulator = 0; // Time-based score ticking
         let gameStartTimestamp = 0; // When current game started (ms)
         let raceMilestones = {}; // { '5k': timeMs, '10k': timeMs, ... }
-        const RACE_THRESHOLDS = { '5k': 500, '10k': 1000, '21.1k': 2110, '42.2k': 4220 };
+        const RACE_THRESHOLDS = { '5k': 5000, '10k': 10000, '21.1k': 21100, '42.2k': 42200 };
         
         // Firebase Configuration
         const firebaseConfig = {
@@ -2704,17 +2704,41 @@
                 ctx.restore();
             });
             
-            // Draw active indicators
-            let offsetY = 100;
+            // Draw active power-up indicators (bigger, lower on mobile)
+            const isMobileCanvas = canvas.width < 500;
+            let offsetY = isMobileCanvas ? canvas.height * 0.35 : 100;
+            const fontSize = isMobileCanvas ? 22 : 20;
+            const lineHeight = isMobileCanvas ? 34 : 30;
             activePowerUps.forEach(powerUp => {
                 ctx.save();
                 const colors = { SHIELD: '#00FFD1', MAGNET: '#FF006B' };
-                ctx.fillStyle = colors[powerUp.type];
-                ctx.font = 'bold 16px Oswald';
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = colors[powerUp.type];
-                ctx.fillText(`${powerUp.type}: ${(powerUp.timeLeft/1000).toFixed(1)}s`, canvas.width - 120, offsetY);
-                offsetY += 25;
+                const icons = { SHIELD: '🛡️', MAGNET: '🧲' };
+                const color = colors[powerUp.type];
+                const timeStr = (powerUp.timeLeft/1000).toFixed(1) + 's';
+
+                // Background pill
+                const pillW = isMobileCanvas ? 130 : 150;
+                const pillH = isMobileCanvas ? 28 : 26;
+                const pillX = canvas.width - pillW - 10;
+                const pillY = offsetY - pillH / 2 - 2;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.beginPath();
+                ctx.roundRect(pillX, pillY, pillW, pillH, 6);
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(pillX, pillY, pillW, pillH, 6);
+                ctx.stroke();
+
+                // Text
+                ctx.fillStyle = color;
+                ctx.font = `bold ${fontSize}px Oswald`;
+                ctx.textAlign = 'right';
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = color;
+                ctx.fillText(`${icons[powerUp.type]} ${powerUp.type}: ${timeStr}`, canvas.width - 16, offsetY);
+                offsetY += lineHeight;
                 ctx.restore();
             });
         }
@@ -3916,21 +3940,41 @@
         }
 
         // RACES: Fastest time to reach distance milestone
+        // RACES: Cumulative — fastest total play time to accumulate distance
         function getRacesData(data) {
             const dist = currentRaceDistance;
-            const bestByUser = {};
+            const threshold = RACE_THRESHOLDS[dist];
 
+            // Group games by username, sorted by timestamp
+            const userGames = {};
             for (const entry of data) {
-                if (!entry.raceTimes || !entry.raceTimes[dist]) continue;
                 const name = entry.username || 'Unknown';
-                const time = entry.raceTimes[dist];
-                if (!bestByUser[name] || time < bestByUser[name].value) {
-                    bestByUser[name] = { username: name, value: time };
+                if (!userGames[name]) userGames[name] = [];
+                userGames[name].push(entry);
+            }
+
+            const results = {};
+            for (const [name, games] of Object.entries(userGames)) {
+                // Sort chronologically
+                games.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                let cumulativeScore = 0;
+                let cumulativeTime = 0;
+
+                for (const game of games) {
+                    cumulativeScore += game.score;
+                    cumulativeTime += (game.gameDuration || 0);
+
+                    if (cumulativeScore >= threshold) {
+                        // Record the total play time when they first crossed the threshold
+                        results[name] = { username: name, value: cumulativeTime, cumulativeScore };
+                        break;
+                    }
                 }
             }
 
-            // Sort ascending (fastest first)
-            const rankings = Object.values(bestByUser).sort((a, b) => a.value - b.value);
+            // Sort ascending (fastest cumulative play time first)
+            const rankings = Object.values(results).sort((a, b) => a.value - b.value);
             const playerEntry = rankings.find(r => r.username === playerUsername);
             return { rankings, playerEntry, valueLabel: '', isTime: true };
         }
