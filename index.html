@@ -48,10 +48,10 @@
             position: fixed;
             width: 100%;
             height: 100%;
-            /* Viewport height: stack from safe to aggressive */
+            /* Viewport height: progressive enhancement — last wins */
             height: 100vh;
-            height: 100dvh; /* dynamic viewport height — respects WhatsApp/Instagram in-app browser chrome */
-            height: -webkit-fill-available;
+            height: -webkit-fill-available; /* iOS Safari fallback */
+            height: 100dvh; /* best option — respects WhatsApp/Instagram in-app browser chrome */
             top: 0;
             left: 0;
             margin: 0;
@@ -1272,11 +1272,35 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('orientationchange', resizeCanvas);
-        
+
         // iOS Safari: listen to visualViewport changes (handles keyboard, toolbar, etc.)
+        // Debounce to avoid canvas clears during gameplay from toolbar animations
+        let resizeDebounceTimer = null;
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', resizeCanvas);
+            window.visualViewport.addEventListener('resize', () => {
+                if (gameActive) {
+                    clearTimeout(resizeDebounceTimer);
+                    resizeDebounceTimer = setTimeout(resizeCanvas, 150);
+                } else {
+                    resizeCanvas();
+                }
+            });
         }
+
+        // roundRect polyfill for older iOS (Safari <16)
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+                const r = typeof radii === 'number' ? radii : (Array.isArray(radii) ? radii[0] : 0);
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+            };
+        }
+
+        // Cached DOM references for hot-path performance
+        const scoreEl = document.getElementById('score');
 
         // Profanity filter - basic list
         const profanityList = ['fuck', 'shit', 'ass', 'bitch', 'damn', 'hell', 'piss', 'crap', 'dick', 'cock', 'pussy', 'bastard', 'slut', 'whore', 'fag', 'nigger', 'nigga', 'cunt', 'twat'];
@@ -1590,8 +1614,6 @@
             // Neon grid on ground
             ctx.strokeStyle = '#ff00ff';
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ff00ff';
             
             // Horizontal lines
             for (let i = 0; i < 5; i++) {
@@ -1611,8 +1633,6 @@
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }
-            
-            ctx.shadowBlur = 0;
         }
 
         // Draw player
@@ -1980,6 +2000,50 @@
             confettiParticles = confettiParticles.filter(p => p.life > 0);
         }
 
+        function drawConfetti() {
+            confettiParticles.forEach(particle => {
+                ctx.save();
+                if (particle.isFloatingText) {
+                    ctx.globalAlpha = particle.life / 40;
+                    ctx.fillStyle = particle.color;
+                    ctx.font = 'bold 20px Oswald';
+                    ctx.fillText(particle.text, particle.x, particle.y);
+                } else {
+                    ctx.translate(particle.x, particle.y);
+                    ctx.rotate(particle.rotation);
+                    ctx.globalAlpha = particle.life / 100;
+                    ctx.fillStyle = particle.color;
+                    ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+                }
+                ctx.restore();
+            });
+        }
+
+        function showFloatingText(text, x, y, color) {
+            confettiParticles.push({
+                x: x, y: y, vx: 0, vy: -2, rotation: 0,
+                life: 30, size: 20, color: color,
+                text: text, isFloatingText: true
+            });
+        }
+
+        function togglePause() {
+            gamePaused = !gamePaused;
+            if (gamePaused) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#00FFD1';
+                ctx.font = 'bold 60px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+                ctx.font = 'bold 20px Oswald';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('Press ESC or P to resume', canvas.width / 2, canvas.height / 2 + 60);
+                ctx.restore();
+            }
+        }
+
         // PACKAGE A: Coin System
         function createCoin() {
             const y = canvas.height - groundHeight - 100 - Math.random() * 150;
@@ -1992,265 +2056,7 @@
             });
         }
 
-        function updateCoins() {
-            const currentSpeed = getCurrentSpeed();
-            coins.forEach(coin => {
-                coin.x -= currentSpeed * dt;
-            });
-            coins = coins.filter(c => c.x > -50 && !c.collected);
-            
-            // Check collection
-            coins.forEach(coin => {
-                if (!coin.collected &&
-                    player.x < coin.x + coin.width &&
-                    player.x + player.width > coin.x &&
-                    player.y < coin.y + coin.height &&
-                    player.y + player.height > coin.y) {
-                    coin.collected = true;
-                    totalCoinsCollected++;
-                    score += 10; // Bonus points for coins
-                    document.getElementById('score').textContent = score;
-                }
-            });
-        }
-
-        function drawCoins() {
-            coins.forEach(coin => {
-                if (!coin.collected) {
-                    ctx.save();
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = '#FFFF00';
-                    ctx.fillStyle = '#FFFF00';
-                    ctx.beginPath();
-                    ctx.arc(coin.x + coin.width/2, coin.y + coin.height/2, coin.width/2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#FF006B';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            });
-        }
-
-        // PACKAGE A: Power-up System
-        function createPowerUp() {
-            const types = Object.keys(POWER_UP_TYPES);
-            const type = types[Math.floor(Math.random() * types.length)];
-            const powerUpData = POWER_UP_TYPES[type];
-            
-            activePowerUps.push({
-                type: type,
-                x: canvas.width,
-                y: canvas.height - groundHeight - 150,
-                width: 40,
-                height: 40,
-                color: powerUpData.color,
-                duration: powerUpData.duration,
-                active: false,
-                collected: false,
-                activeTimer: 0
-            });
-        }
-
-        function updatePowerUps() {
-            const currentSpeed = getCurrentSpeed();
-            
-            activePowerUps.forEach(powerUp => {
-                if (!powerUp.collected) {
-                    powerUp.x -= currentSpeed * dt;
-                }
-                
-                // Check collection
-                if (!powerUp.collected &&
-                    player.x < powerUp.x + powerUp.width &&
-                    player.x + player.width > powerUp.x &&
-                    player.y < powerUp.y + powerUp.height &&
-                    player.y + player.height > powerUp.y) {
-                    powerUp.collected = true;
-                    powerUp.active = true;
-                    powerUp.activeTimer = powerUp.duration;
-                }
-                
-                // Update active timer
-                if (powerUp.active && powerUp.activeTimer > 0) {
-                    powerUp.activeTimer -= (1000 / 60) * dt;
-                    if (powerUp.activeTimer <= 0) {
-                        powerUp.active = false;
-                    }
-                }
-            });
-            
-            activePowerUps = activePowerUps.filter(p => p.x > -50 || p.active);
-        }
-
-        function drawPowerUps() {
-            activePowerUps.forEach(powerUp => {
-                if (!powerUp.collected) {
-                    ctx.save();
-                    ctx.shadowBlur = 25;
-                    ctx.shadowColor = powerUp.color;
-                    ctx.fillStyle = powerUp.color;
-                    ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
-                    
-                    // Draw icon based on type
-                    ctx.fillStyle = '#000000';
-                    ctx.font = 'bold 24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    const icon = powerUp.type === 'SHIELD' ? '🛡' : '🧲';
-                    ctx.fillText(icon, powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
-                    ctx.restore();
-                }
-            });
-            
-            // Draw active power-up indicators
-            let offsetY = 100;
-            activePowerUps.filter(p => p.active).forEach(powerUp => {
-                ctx.save();
-                ctx.fillStyle = powerUp.color;
-                ctx.font = 'bold 16px Oswald';
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = powerUp.color;
-                const timeLeft = (powerUp.activeTimer / 1000).toFixed(1);
-                ctx.fillText(`${POWER_UP_TYPES[powerUp.type].name}: ${timeLeft}s`, canvas.width - 150, offsetY);
-                offsetY += 25;
-                ctx.restore();
-            });
-        }
-
-        function hasActivePowerUp(type) {
-            return activePowerUps.some(p => p.active && p.type === type);
-        }
-
-        // PACKAGE A: Screen Shake
-        function triggerScreenShake(intensity, duration) {
-            screenShake = {
-                active: true,
-                intensity: intensity,
-                duration: duration,
-                elapsed: 0
-            };
-        }
-
-        function updateScreenShake() {
-            if (screenShake.active) {
-                screenShake.elapsed += 16.67 * dt; // Scale by dt
-                if (screenShake.elapsed >= screenShake.duration) {
-                    screenShake.active = false;
-                    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-                }
-            }
-        }
-
-        function applyScreenShake() {
-            if (screenShake.active) {
-                const progress = screenShake.elapsed / screenShake.duration;
-                const currentIntensity = screenShake.intensity * (1 - progress);
-                const offsetX = (Math.random() - 0.5) * currentIntensity;
-                const offsetY = (Math.random() - 0.5) * currentIntensity;
-                ctx.setTransform(1, 0, 0, 1, offsetX, offsetY);
-            }
-        }
-
-        // PACKAGE A: Near-Miss Detection
-        function checkNearMiss() {
-            obstacles.forEach(obs => {
-                const nearMissDistance = 30;
-                const playerRight = player.x + player.width;
-                const obsLeft = obs.x;
-                
-                // Check if obstacle just passed the player
-                if (playerRight >= obsLeft - nearMissDistance && 
-                    playerRight <= obsLeft + nearMissDistance &&
-                    obs.x !== lastNearMiss) {
-                    // Check if player didn't collide (near miss!)
-                    const isNearMiss = !(player.x < obs.x + obs.width &&
-                                        player.x + player.width > obs.x &&
-                                        player.y < obs.y + obs.height &&
-                                        player.y + player.height > obs.y);
-                    
-                    if (isNearMiss) {
-                        score += 5; // Bonus for near miss
-                        document.getElementById('score').textContent = score;
-                        lastNearMiss = obs.x;
-                        
-                        // Visual feedback
-                        showFloatingText('+5 CLOSE!', player.x + 50, player.y, '#FFFF00');
-                    }
-                }
-            });
-        }
-
-        function showFloatingText(text, x, y, color) {
-            // Add to confetti array for reuse
-            confettiParticles.push({
-                x: x,
-                y: y,
-                vx: 0,
-                vy: -2,
-                rotation: 0,
-                life: 30,
-                size: 20,
-                color: color,
-                text: text,
-                isFloatingText: true
-            });
-        }
-
-        function drawConfetti() {
-            confettiParticles.forEach(particle => {
-                ctx.save();
-                
-                // Package A: Handle floating text differently
-                if (particle.isFloatingText) {
-                    ctx.globalAlpha = particle.life / 40;
-                    ctx.fillStyle = particle.color;
-                    ctx.font = 'bold 20px Oswald';
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = particle.color;
-                    ctx.fillText(particle.text, particle.x, particle.y);
-                } else {
-                    // Regular confetti
-                    ctx.translate(particle.x, particle.y);
-                    ctx.rotate(particle.rotation);
-                    ctx.globalAlpha = particle.life / 100;
-                    ctx.fillStyle = particle.color;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = particle.color;
-                    ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
-                }
-                
-                ctx.restore();
-            });
-        }
-
-
-        // ===== PACKAGE A: NEW FEATURES =====
-        
-        // Pause System
-        function togglePause() {
-            gamePaused = !gamePaused;
-            if (gamePaused) {
-                // Show pause overlay
-                ctx.save();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#00FFD1';
-                ctx.font = 'bold 60px Orbitron';
-                ctx.textAlign = 'center';
-                ctx.shadowBlur = 30;
-                ctx.shadowColor = '#00FFD1';
-                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
-                ctx.font = 'bold 20px Oswald';
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowBlur = 10;
-                ctx.fillText('Press ESC or P to resume', canvas.width / 2, canvas.height / 2 + 60);
-                ctx.restore();
-            }
-        }
+        // (Dead PACKAGE A duplicates removed — active versions below)
         
         // Coin System
         function spawnCoin() {
@@ -2327,7 +2133,7 @@
                     // Collected!
                     score += 10;
                     totalCoinsCollected++;
-                    document.getElementById('score').textContent = score;
+                    scoreEl.textContent = score;
                     coins.splice(i, 1);
                     // Add particle effect
                     for (let j = 0; j < 10; j++) {
@@ -2352,8 +2158,6 @@
                 ctx.save();
                 ctx.translate(coin.x + coin.width/2, coin.y + coin.height/2);
                 ctx.rotate(coin.rotation);
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#FFFF00';
                 ctx.fillStyle = '#FFFF00';
                 ctx.beginPath();
                 ctx.arc(0, 0, coin.width/2, 0, Math.PI * 2);
@@ -2403,7 +2207,7 @@
                     
                     if (!inSafeZone && penaltyCooldown <= 0) {
                         score = Math.max(0, score - 10); // Deduct 10, minimum 0
-                        document.getElementById('score').textContent = score;
+                        scoreEl.textContent = score;
                         
                         // Visual feedback
                         triggerScreenShake(5, 200);
@@ -2442,10 +2246,6 @@
                 ctx.save();
                 ctx.translate(obj.x + obj.width/2, obj.y + obj.height/2);
                 ctx.rotate(obj.rotation);
-                
-                // Red/dark theme for penalty
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#FF0000';
                 
                 // Red spiky circle
                 ctx.fillStyle = '#FF0000';
@@ -2516,8 +2316,6 @@
                 ctx.save();
                 const alpha = Math.min(text.life / 30, 1);
                 ctx.globalAlpha = alpha;
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = text.color;
                 ctx.fillStyle = text.color;
                 ctx.font = 'bold 28px Orbitron, sans-serif';
                 ctx.textAlign = 'center';
@@ -2780,17 +2578,15 @@
         }
         
         function drawParticles() {
+            const prevAlpha = ctx.globalAlpha;
             particles.forEach(particle => {
-                ctx.save();
-                ctx.globalAlpha = particle.life / 35; // Adjust alpha calculation for new life value
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = particle.color;
+                ctx.globalAlpha = particle.life / 35;
                 ctx.fillStyle = particle.color;
                 ctx.beginPath();
                 ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.restore();
             });
+            ctx.globalAlpha = prevAlpha;
         }
         
         // Screen Shake
@@ -2835,7 +2631,7 @@
                     // Near-miss: player passed within 5 pixels above the obstacle
                     if (verticalGap >= 0 && verticalGap <= 5) {
                         score += 5;
-                        document.getElementById('score').textContent = score;
+                        scoreEl.textContent = score;
                         obs.nearMissCounted = true;
                         
                         // Visual feedback
@@ -3038,7 +2834,7 @@
                 scoreAccumulator -= 10;
                 const oldScore = score;
                 score++;
-                document.getElementById('score').textContent = score;
+                scoreEl.textContent = score;
 
                 // Check race milestones
                 for (const [key, threshold] of Object.entries(RACE_THRESHOLDS)) {
@@ -3295,15 +3091,21 @@
             }
         });
 
-        canvas.addEventListener('click', jump);
+        // Use touchstart on mobile (with preventDefault to block synthesized click),
+        // click on desktop. Prevents double-fire on mobile devices.
+        let touchHandled = false;
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            // If game over, restart the game
+            touchHandled = true;
             if (!gameActive && !document.getElementById('gameOverScreen').classList.contains('hidden')) {
                 restartGame();
             } else {
                 jump();
             }
+        });
+        canvas.addEventListener('click', () => {
+            if (touchHandled) { touchHandled = false; return; }
+            jump();
         });
 
         // ============================================
@@ -3508,7 +3310,7 @@
             
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
-            document.getElementById('score').textContent = '0';
+            scoreEl.textContent = '0';
             setScreenVisible(false);
 
             // === EARLY GAME HOOK ===
@@ -4571,11 +4373,21 @@
 
         // Allow Enter key to submit score
         
-        // iOS Mobile optimizations - prevent bounce scrolling during gameplay only
+        // iOS Mobile optimizations — single merged touchmove handler
+        let startY = 0;
+        document.addEventListener('touchstart', function(e) {
+            startY = e.touches[0].pageY;
+        }, { passive: true });
+
         document.addEventListener('touchmove', function(e) {
-            // Only block touch scrolling during active gameplay
-            // Allow scrolling on start screen, game over screen, and modals
+            // Block scrolling during active gameplay
             if (gameActive && !gamePaused) {
+                e.preventDefault();
+                return;
+            }
+            // Prevent pull-to-refresh when at top of page
+            const y = e.touches[0].pageY;
+            if (y > startY && window.pageYOffset === 0) {
                 e.preventDefault();
             }
         }, { passive: false });
@@ -4583,27 +4395,13 @@
         // Prevent double-tap zoom on iOS (only during gameplay)
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function(e) {
-            if (!gameActive) return; // Allow normal taps on menu screens
+            if (!gameActive) return;
             const now = Date.now();
             if (now - lastTouchEnd <= 300) {
                 e.preventDefault();
             }
             lastTouchEnd = now;
         }, false);
-        
-        // Prevent iOS Safari pull-to-refresh
-        let startY = 0;
-        document.addEventListener('touchstart', function(e) {
-            startY = e.touches[0].pageY;
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', function(e) {
-            const y = e.touches[0].pageY;
-            // Prevent pull-to-refresh when scrolling up at the top
-            if (y > startY && window.pageYOffset === 0) {
-                e.preventDefault();
-            }
-        }, { passive: false });
         
         // Global error handler for debugging
         window.addEventListener('error', function(event) {
