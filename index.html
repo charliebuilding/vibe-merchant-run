@@ -442,6 +442,56 @@
             box-shadow: 0 0 15px #00FFD1;
         }
 
+        .cumulative-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+        .cumulative-tab {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #888;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .cumulative-tab.active {
+            background: rgba(255, 0, 255, 0.2);
+            border-color: #ff00ff;
+            color: #ff00ff;
+            text-shadow: 0 0 8px #ff00ff;
+        }
+        .cumulative-your-total {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 0, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .cumulative-your-total .label {
+            font-size: 11px;
+            color: #ff00ff;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .cumulative-your-total .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff00ff;
+        }
+        .cumulative-your-total .games {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+
         .hidden {
             display: none !important;
         }
@@ -1039,6 +1089,21 @@
             </div>
         </div>
         
+        <!-- Cumulative Leaderboard -->
+        <div class="scoreboard-container" style="margin-top: 8px; margin-bottom: 10px; border-color: #ff00ff; box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);">
+            <div class="scoreboard-title" style="margin-bottom: 4px; font-size: 18px; color: #ff00ff; text-shadow: 0 0 10px #ff00ff;">🔥 TOTAL SCORES</div>
+            <div class="cumulative-tabs">
+                <button class="cumulative-tab active" onclick="switchCumulativeTab('day')">TODAY</button>
+                <button class="cumulative-tab" onclick="switchCumulativeTab('week')">WEEK</button>
+                <button class="cumulative-tab" onclick="switchCumulativeTab('month')">MONTH</button>
+                <button class="cumulative-tab" onclick="switchCumulativeTab('all')">ALL TIME</button>
+            </div>
+            <div id="cumulativeYourTotal" class="cumulative-your-total" style="display: none;"></div>
+            <div id="cumulativeLeaderboard">
+                <div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">Loading...</div>
+            </div>
+        </div>
+
         <!-- Local Leaderboard -->
         <div class="scoreboard-container" style="margin-top: 8px; margin-bottom: 15px;">
             <div class="scoreboard-title" style="margin-bottom: 4px; font-size: 18px;">📱 YOUR SCORES</div>
@@ -3446,6 +3511,14 @@
                 await fetchLeaderboard();
                 playerRank = getPlayerRank(score);
                 displayGlobalLeaderboard();
+
+                // Fetch and display cumulative leaderboard
+                await fetchCumulativeData();
+                currentCumulativeTab = 'day';
+                document.querySelectorAll('.cumulative-tab').forEach((tab, i) => {
+                    tab.classList.toggle('active', i === 0);
+                });
+                displayCumulativeLeaderboard();
             } else {
                 // No Firebase — reset submit button for manual use
                 const submitBtn = document.getElementById('submitGlobalButton');
@@ -3745,6 +3818,140 @@
                     <span class="rank">${medal || '#' + (index + 1)}</span>
                     <span class="username">${escapeHtml(entry.username)}</span>
                     <span class="points">${entry.score}</span>
+                </div>
+            `}).join('');
+        }
+
+        // Cumulative leaderboard state
+        let cumulativeData = []; // All scores from Firebase
+        let currentCumulativeTab = 'day';
+
+        // Fetch all scores for cumulative aggregation
+        async function fetchCumulativeData() {
+            if (!database) return;
+
+            try {
+                const snapshot = await database.ref('scores').once('value');
+                cumulativeData = [];
+                snapshot.forEach((childSnapshot) => {
+                    cumulativeData.push(childSnapshot.val());
+                });
+                console.log('📊 Cumulative data fetched:', cumulativeData.length, 'total scores');
+            } catch (error) {
+                console.error('Error fetching cumulative data:', error);
+            }
+        }
+
+        // Aggregate cumulative scores by time period
+        function aggregateCumulativeScores(period) {
+            const now = Date.now();
+            let cutoff;
+
+            if (period === 'day') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                cutoff = today.getTime();
+            } else if (period === 'week') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                weekAgo.setHours(0, 0, 0, 0);
+                cutoff = weekAgo.getTime();
+            } else if (period === 'month') {
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                monthAgo.setHours(0, 0, 0, 0);
+                cutoff = monthAgo.getTime();
+            } else {
+                cutoff = 0; // All time
+            }
+
+            // Filter by time period and aggregate by username
+            const userTotals = {};
+
+            for (const entry of cumulativeData) {
+                if (entry.timestamp < cutoff) continue;
+
+                const username = entry.username || 'Unknown';
+                if (!userTotals[username]) {
+                    userTotals[username] = { totalScore: 0, games: 0 };
+                }
+                userTotals[username].totalScore += entry.score;
+                userTotals[username].games += 1;
+            }
+
+            // Convert to sorted array
+            return Object.entries(userTotals)
+                .map(([username, data]) => ({ username, totalScore: data.totalScore, games: data.games }))
+                .sort((a, b) => b.totalScore - a.totalScore);
+        }
+
+        // Switch cumulative tab
+        function switchCumulativeTab(period) {
+            currentCumulativeTab = period;
+
+            // Update active tab styling
+            const tabMap = { day: 0, week: 1, month: 2, all: 3 };
+            document.querySelectorAll('.cumulative-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === tabMap[period]);
+            });
+
+            displayCumulativeLeaderboard();
+        }
+
+        // Display cumulative leaderboard
+        function displayCumulativeLeaderboard() {
+            const board = document.getElementById('cumulativeLeaderboard');
+            const yourTotalEl = document.getElementById('cumulativeYourTotal');
+            if (!board) return;
+
+            const rankings = aggregateCumulativeScores(currentCumulativeTab);
+
+            if (rankings.length === 0) {
+                board.innerHTML = '<div style="text-align: center; color: #666; padding: 15px; font-size: 13px;">No scores yet for this period</div>';
+                yourTotalEl.style.display = 'none';
+                return;
+            }
+
+            // Show current player's cumulative total
+            const playerData = rankings.find(r => r.username === playerUsername);
+            if (playerData) {
+                const playerRankCumulative = rankings.indexOf(playerData) + 1;
+                yourTotalEl.style.display = 'block';
+                yourTotalEl.innerHTML = `
+                    <div class="label">YOUR TOTAL (#${playerRankCumulative})</div>
+                    <div class="value">${playerData.totalScore.toLocaleString()}</div>
+                    <div class="games">${playerData.games} game${playerData.games !== 1 ? 's' : ''} played</div>
+                `;
+            } else {
+                yourTotalEl.style.display = 'none';
+            }
+
+            // Show top 10
+            const top10 = rankings.slice(0, 10);
+            board.innerHTML = top10.map((entry, index) => {
+                let medal = '';
+                let borderClass = '';
+
+                if (index === 0) {
+                    medal = '🥇';
+                    borderClass = 'style="border: 2px solid #FFD700; background: rgba(255, 215, 0, 0.1);"';
+                } else if (index === 1) {
+                    medal = '🥈';
+                    borderClass = 'style="border: 2px solid #C0C0C0; background: rgba(192, 192, 192, 0.1);"';
+                } else if (index === 2) {
+                    medal = '🥉';
+                    borderClass = 'style="border: 2px solid #CD7F32; background: rgba(205, 127, 50, 0.1);"';
+                }
+
+                const isCurrentPlayer = entry.username === playerUsername;
+                const highlight = isCurrentPlayer ? 'border: 1px solid #ff00ff; background: rgba(255, 0, 255, 0.1);' : '';
+                const finalStyle = borderClass ? borderClass : (highlight ? `style="${highlight}"` : '');
+
+                return `
+                <div class="score-entry" ${finalStyle}>
+                    <span class="rank">${medal || '#' + (index + 1)}</span>
+                    <span class="username">${escapeHtml(entry.username)}</span>
+                    <span class="points" style="font-size: 13px;">${entry.totalScore.toLocaleString()} <span style="font-size: 9px; color: #aaa;">(${entry.games})</span></span>
                 </div>
             `}).join('');
         }
