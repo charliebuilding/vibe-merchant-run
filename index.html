@@ -3373,6 +3373,7 @@
 
         // Start game
         function startGame() {
+            if (bgMusic && musicStarted && !musicMuted) bgMusic.play().catch(() => {});
             score = 0;
             gameSpeed = 5.6; // 20% slower than 7
             frameCount = 0;
@@ -3472,6 +3473,7 @@
         async function endGame() {
             gameActive = false;
             playSfx('death');
+            if (bgMusic) bgMusic.pause();
             document.getElementById('finalScore').textContent = score;
             
             // Update tier display
