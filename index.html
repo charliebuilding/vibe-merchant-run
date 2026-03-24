@@ -1406,6 +1406,64 @@
             if (btn) btn.textContent = musicMuted ? '🔇' : '🔊';
         }
 
+        // Sound effects (Web Audio API — no files needed)
+        let audioCtx = null;
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playSfx(type) {
+            if (musicMuted) return;
+            try {
+                const ctx = getAudioCtx();
+                if (ctx.state === 'suspended') ctx.resume();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+
+                if (type === 'coin') {
+                    // Quick bright ping
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.exponentialRampToValueAtTime(1760, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'powerup') {
+                    // Rising sparkle
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.2);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'death') {
+                    // Low descending buzz
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'penalty') {
+                    // Short low thud
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+            } catch (e) { /* silent fail */ }
+        }
+
         // Pause music when tab is hidden, resume when visible
         document.addEventListener('visibilitychange', () => {
             if (!bgMusic || !musicStarted) return;
@@ -2182,6 +2240,7 @@
                     player.y < coin.y + coin.height &&
                     player.y + player.height > coin.y) {
                     // Collected!
+                    playSfx('coin');
                     score += 10;
                     totalCoinsCollected++;
                     scoreEl.textContent = score;
@@ -2257,9 +2316,10 @@
                     const inSafeZone = (score >= 480 && score <= 520);
                     
                     if (!inSafeZone && penaltyCooldown <= 0) {
+                        playSfx('penalty');
                         score = Math.max(0, score - 10); // Deduct 10, minimum 0
                         scoreEl.textContent = score;
-                        
+
                         // Visual feedback
                         triggerScreenShake(5, 200);
                         penaltyCooldown = PENALTY_COOLDOWN_FRAMES;
@@ -2468,6 +2528,7 @@
                     player.x + player.width > powerUp.x &&
                     player.y < powerUp.y + powerUp.height &&
                     player.y + player.height > powerUp.y) {
+                    playSfx('powerup');
                     activatePowerUp(powerUp.type);
                     powerUps.splice(i, 1);
                 }
@@ -3410,6 +3471,7 @@
         // End game
         async function endGame() {
             gameActive = false;
+            playSfx('death');
             document.getElementById('finalScore').textContent = score;
             
             // Update tier display
