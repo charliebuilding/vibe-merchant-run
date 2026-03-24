@@ -947,6 +947,29 @@
             filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
         }
 
+        .mute-btn {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 150;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: border-color 0.2s;
+        }
+        .mute-btn:hover {
+            border-color: #00ffff;
+        }
+
     </style>
 </head>
 <body>
@@ -973,6 +996,7 @@
         </div>
         
         <canvas id="gameCanvas"></canvas>
+        <button id="muteBtn" class="mute-btn" onclick="toggleMute()">🔊</button>
     </div>
 
     <!-- How To Play Modal -->
@@ -1340,6 +1364,55 @@
         let globalLeaderboard = [];
         let playerRank = null;
         let personalBest = parseInt(localStorage.getItem('fnl_personal_best') || '0');
+
+        // Music
+        let bgMusic = null;
+        let musicMuted = localStorage.getItem('fnl_music_muted') === 'true';
+        let musicStarted = false;
+
+        function initMusic() {
+            if (bgMusic) return;
+            bgMusic = new Audio('music.mp3');
+            bgMusic.loop = true;
+            bgMusic.volume = 0.3;
+            bgMusic.muted = musicMuted;
+        }
+
+        function startMusic() {
+            if (musicStarted) return;
+            initMusic();
+            bgMusic.play().then(() => {
+                musicStarted = true;
+                updateMuteBtn();
+                document.getElementById('muteBtn').style.display = 'flex';
+            }).catch(e => {
+                // Music file missing or autoplay blocked — silent fail
+                console.log('Music not available:', e.message);
+            });
+        }
+
+        function toggleMute() {
+            if (!bgMusic) return;
+            musicMuted = !musicMuted;
+            bgMusic.muted = musicMuted;
+            localStorage.setItem('fnl_music_muted', musicMuted);
+            updateMuteBtn();
+        }
+
+        function updateMuteBtn() {
+            const btn = document.getElementById('muteBtn');
+            if (btn) btn.textContent = musicMuted ? '🔇' : '🔊';
+        }
+
+        // Pause music when tab is hidden, resume when visible
+        document.addEventListener('visibilitychange', () => {
+            if (!bgMusic || !musicStarted) return;
+            if (document.hidden) {
+                bgMusic.pause();
+            } else if (!musicMuted) {
+                bgMusic.play().catch(() => {});
+            }
+        });
         
         // Initialize Firebase with retry
         function initFirebase() {
@@ -4019,6 +4092,7 @@
             playerUsername = username;
             errorDiv.style.display = 'none';
             usernameInput.blur(); // Release focus so spacebar works for jumping
+            startMusic(); // Must be synchronous in gesture handler for iOS audio unlock
             showHowToPlay();
         }
 
