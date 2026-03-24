@@ -590,9 +590,8 @@
                 font-size: 56px;
             }
 
-            .fnl-logo {
-                font-size: 20px;
-                letter-spacing: 1.5px;
+            .fnl-logo-img {
+                width: 120px;
             }
 
             .fnl-logo-box {
@@ -939,40 +938,13 @@
         }
 
         .fnl-logo {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 33.6px;
-            font-weight: 900;
             text-align: center;
-            letter-spacing: 2.4px;
-            line-height: 1.2;
         }
 
-        .fnl-logo .friday {
-            color: #ffffff;
-            text-shadow: 0 0 25px rgba(255, 255, 255, 0.8), 0 0 50px rgba(255, 255, 255, 0.5);
-            display: block;
-        }
-
-        .fnl-logo .night {
-            color: #ffffff;
-            text-shadow: 0 0 25px rgba(255, 255, 255, 0.8), 0 0 50px rgba(255, 255, 255, 0.5);
-            display: block;
-        }
-
-        .fnl-logo .lights {
-            background: linear-gradient(90deg, 
-                #00FFD1 0%, 
-                #00FFD1 20%, 
-                #66FF70 33%,
-                #FFFF00 50%,
-                #FF7F35 67%,
-                #FF006B 80%,
-                #FF006B 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            display: block;
-            filter: drop-shadow(0 0 20px #00FFD1) drop-shadow(0 0 20px #FFFF00) drop-shadow(0 0 20px #FF006B);
+        .fnl-logo-img {
+            width: 180px;
+            height: auto;
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
         }
 
     </style>
@@ -995,9 +967,7 @@
         <!-- FNL Logo Box with Score -->
         <div class="fnl-logo-box">
             <div class="fnl-logo">
-                <span class="friday">FRIDAY</span>
-                <span class="night">NIGHT</span>
-                <span class="lights">LIGHTS</span>
+                <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" class="fnl-logo-img">
             </div>
             <div id="score">0</div>
         </div>
@@ -1068,6 +1038,7 @@
 
     <!-- Start Screen -->
     <div id="startScreen">
+        <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" style="width: 200px; height: auto; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">
         <div class="title">VIBE MERCHANT RUN</div>
         <div class="subtitle">Jump to Survive</div>
         
@@ -1196,6 +1167,7 @@
         <button class="btn" onclick="showHowToPlayFromGameOver()" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 16px; border-color: #666; color: #999; background: rgba(255,255,255,0.03); white-space: nowrap; margin: 8px auto 15px auto;">
             <span>📖</span><span>HOW TO PLAY</span>
         </button>
+        <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" style="width: 120px; height: auto; opacity: 0.6; margin-bottom: 10px;">
     </div>
 
 
@@ -1330,6 +1302,10 @@
                 challengeFrom = fromParam || 'Someone';
             }
         })();
+
+        // Preload FNL logo for canvas drawing
+        const fnlLogoImg = new Image();
+        fnlLogoImg.src = 'FNL_Stacked_Colour_Light.png';
 
         // Game variables
         let gameActive = false;
@@ -4246,17 +4222,22 @@
             ctx.fillText(tierEmoji + '  ' + tierLabel + '  ' + tierEmoji, W/2, badgeY + 14);
             ctx.shadowBlur = 0;
             
-            // === FNL BRANDING ===
-            ctx.font = 'bold 80px Orbitron, sans-serif';
-            ctx.fillStyle = '#ffffff';
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#ffffff';
-            ctx.fillText('FRIDAY', W/2, 410);
-            ctx.fillText('NIGHT', W/2, 500);
-            ctx.shadowColor = tierColor;
-            ctx.fillStyle = tierColor;
-            ctx.fillText('LIGHTS', W/2, 590);
-            ctx.shadowBlur = 0;
+            // === FNL BRANDING (logo image) ===
+            if (fnlLogoImg.complete && fnlLogoImg.naturalWidth > 0) {
+                const logoAspect = fnlLogoImg.naturalWidth / fnlLogoImg.naturalHeight;
+                const logoW = 400;
+                const logoH = logoW / logoAspect;
+                ctx.drawImage(fnlLogoImg, W/2 - logoW/2, 390, logoW, logoH);
+            } else {
+                // Fallback text if image hasn't loaded
+                ctx.font = 'bold 80px Orbitron, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText('FRIDAY', W/2, 410);
+                ctx.fillText('NIGHT', W/2, 500);
+                ctx.fillStyle = tierColor;
+                ctx.fillText('LIGHTS', W/2, 590);
+            }
             
             // Decorative line under FNL
             const lineGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
