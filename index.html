@@ -1416,6 +1416,12 @@
             bgMusic.loop = true;
             bgMusic.volume = 0.3;
             bgMusic.muted = musicMuted;
+            // Gapless loop: restart just before the track ends to avoid silence
+            bgMusic.addEventListener('timeupdate', () => {
+                if (bgMusic.duration && bgMusic.currentTime > bgMusic.duration - 0.3) {
+                    bgMusic.currentTime = 0;
+                }
+            });
         }
 
         function startMusic() {
@@ -1587,7 +1593,7 @@
             deathFlashAlpha = 0;
             playSfx('death');
             haptic([50]);
-            if (bgMusic) bgMusic.pause();
+            // Music keeps playing through death and game over
 
             // Spawn death particle burst
             for (let i = 0; i < 50; i++) {
