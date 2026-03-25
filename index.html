@@ -1346,7 +1346,22 @@
         let gameStartTimestamp = 0; // When current game started (ms)
         let raceMilestones = {}; // { '5k': timeMs, '10k': timeMs, ... }
         const RACE_THRESHOLDS = { '5k': 5000, '10k': 10000, '21.1k': 21100, '42.2k': 42200 };
-        
+
+        // Death Animation
+        let deathAnimActive = false;
+        let deathAnimPhase = 0;       // 0=slo-mo, 1=explosion, 2=fade, 3=done
+        let deathAnimTimer = 0;
+        let deathFlashAlpha = 0;
+
+        // Combo System
+        let comboCount = 0;
+        let comboTimer = 0;
+        let comboMultiplier = 1.0;
+        let comboMaxReached = 0;
+        let comboDisplayScale = 1.0;
+        const COMBO_TIMEOUT = 3000;
+        const COMBO_MULTIPLIERS = [1, 1, 1.2, 1.2, 1.5, 1.5, 2, 2, 2, 2.5, 2.5, 2.5, 2.5, 3];
+
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBOPyii_ORJRoxWxgpl8IcbUtWQcUhJNmU",
@@ -1462,6 +1477,153 @@
                     osc.stop(now + 0.15);
                 }
             } catch (e) { /* silent fail */ }
+        }
+
+        // Haptic feedback (mobile only, silent fail on unsupported browsers)
+        function haptic(pattern) {
+            try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+        }
+
+        // Combo system
+        function incrementCombo() {
+            comboCount++;
+            comboTimer = COMBO_TIMEOUT;
+            comboMultiplier = COMBO_MULTIPLIERS[Math.min(comboCount, COMBO_MULTIPLIERS.length - 1)];
+            comboDisplayScale = 1.4; // bump for animation
+            if (comboCount > comboMaxReached) comboMaxReached = comboCount;
+        }
+
+        function updateCombo() {
+            if (comboCount > 0) {
+                comboTimer -= 16.67 * dt;
+                if (comboTimer <= 0) {
+                    comboCount = 0;
+                    comboMultiplier = 1.0;
+                    comboTimer = 0;
+                }
+            }
+            // Decay display scale back to 1.0
+            if (comboDisplayScale > 1.0) {
+                comboDisplayScale = Math.max(1.0, comboDisplayScale - 0.02 * dt);
+            }
+        }
+
+        function drawComboDisplay() {
+            if (comboCount < 2) return;
+            const x = canvas.width / 2;
+            const y = 80;
+            const fontSize = Math.round(24 * comboDisplayScale);
+
+            // Colour escalation
+            let color;
+            if (comboCount < 4) color = '#FFFFFF';
+            else if (comboCount < 6) color = '#00FFD1';
+            else if (comboCount < 9) color = '#FF006B';
+            else if (comboCount < 13) color = '#FFD700';
+            else {
+                // Rainbow cycle
+                const hue = (frameCount * 5) % 360;
+                color = `hsl(${hue}, 100%, 60%)`;
+            }
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${fontSize}px Orbitron`;
+            ctx.fillStyle = color;
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            const text = `x${comboCount} COMBO`;
+            ctx.strokeText(text, x, y);
+            ctx.fillText(text, x, y);
+            // Multiplier subtitle
+            if (comboMultiplier > 1) {
+                ctx.font = 'bold 14px Oswald';
+                ctx.fillStyle = color;
+                ctx.fillText(`${comboMultiplier}x SCORE`, x, y + fontSize * 0.7);
+            }
+            ctx.restore();
+        }
+
+        function resetCombo() {
+            comboCount = 0;
+            comboTimer = 0;
+            comboMultiplier = 1.0;
+            comboMaxReached = 0;
+            comboDisplayScale = 1.0;
+        }
+
+        // Death animation
+        function startDeathAnimation() {
+            if (deathAnimActive) return;
+            deathAnimActive = true;
+            deathAnimPhase = 0;
+            deathAnimTimer = 0;
+            deathFlashAlpha = 0;
+            playSfx('death');
+            haptic([100, 50, 200]);
+            if (bgMusic) bgMusic.pause();
+
+            // Spawn death particle burst
+            for (let i = 0; i < 50; i++) {
+                const angle = (Math.PI * 2 / 50) * i;
+                const speed = 2 + Math.random() * 6;
+                particles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 40 + Math.random() * 20,
+                    color: ['#FF006B', '#00FFD1', '#FFFF00', '#FF4444', '#ffffff'][Math.floor(Math.random() * 5)],
+                    size: 3 + Math.random() * 5
+                });
+            }
+            triggerScreenShake(15, 500);
+        }
+
+        function updateDeathAnimation() {
+            deathAnimTimer += 16.67 * dt;
+
+            if (deathAnimPhase === 0) {
+                // Slow-motion phase
+                if (deathAnimTimer >= 400) {
+                    deathAnimPhase = 1;
+                    deathAnimTimer = 0;
+                    deathFlashAlpha = 1.0; // screen flash
+                }
+            } else if (deathAnimPhase === 1) {
+                // Explosion/flash phase
+                deathFlashAlpha = Math.max(0, 1.0 - deathAnimTimer / 300);
+                if (deathAnimTimer >= 300) {
+                    deathAnimPhase = 2;
+                    deathAnimTimer = 0;
+                }
+            } else if (deathAnimPhase === 2) {
+                // Fade to black
+                deathFlashAlpha = deathAnimTimer / 500; // reuse as fade alpha
+                if (deathAnimTimer >= 500) {
+                    deathAnimPhase = 3;
+                    deathAnimActive = false;
+                    endGame();
+                }
+            }
+        }
+
+        function drawDeathOverlay() {
+            if (!deathAnimActive) return;
+            if (deathAnimPhase === 1) {
+                // White flash
+                ctx.save();
+                ctx.fillStyle = `rgba(255, 255, 255, ${deathFlashAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            } else if (deathAnimPhase === 2) {
+                // Fade to black
+                ctx.save();
+                ctx.fillStyle = `rgba(0, 0, 0, ${deathFlashAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
         }
 
         // Pause music when tab is hidden, resume when visible
@@ -2240,8 +2402,11 @@
                     player.y < coin.y + coin.height &&
                     player.y + player.height > coin.y) {
                     // Collected!
+                    incrementCombo();
                     playSfx('coin');
-                    score += 10;
+                    haptic([30]);
+                    const coinPoints = Math.floor(10 * comboMultiplier);
+                    score += coinPoints;
                     totalCoinsCollected++;
                     scoreEl.textContent = score;
                     coins.splice(i, 1);
@@ -2317,6 +2482,7 @@
                     
                     if (!inSafeZone && penaltyCooldown <= 0) {
                         playSfx('penalty');
+                        haptic([80]);
                         score = Math.max(0, score - 10); // Deduct 10, minimum 0
                         scoreEl.textContent = score;
 
@@ -2529,6 +2695,7 @@
                     player.y < powerUp.y + powerUp.height &&
                     player.y + player.height > powerUp.y) {
                     playSfx('powerup');
+                    haptic([50, 30, 50]);
                     activatePowerUp(powerUp.type);
                     powerUps.splice(i, 1);
                 }
@@ -2742,10 +2909,13 @@
                     
                     // Near-miss: player passed within 5 pixels above the obstacle
                     if (verticalGap >= 0 && verticalGap <= 5) {
-                        score += 5;
+                        incrementCombo();
+                        haptic([20, 20, 20, 20, 40]);
+                        const nearMissPoints = Math.floor(5 * comboMultiplier);
+                        score += nearMissPoints;
                         scoreEl.textContent = score;
                         obs.nearMissCounted = true;
-                        
+
                         // Visual feedback
                         confettiParticles.push({
                             x: player.x + 50,
@@ -2755,7 +2925,7 @@
                             rotation: 0,
                             life: 40,
                             color: '#FFFF00',
-                            text: '+5 CLOSE!',
+                            text: `+${nearMissPoints} CLOSE!`,
                             isFloatingText: true
                         });
                     }
@@ -2772,7 +2942,17 @@
 
         // Update game
         function update() {
-            if (!gameActive || gamePaused) return;
+            if (!gameActive && !deathAnimActive) return;
+            if (gamePaused) return;
+
+            // During death animation, only update particles/effects
+            if (deathAnimActive) {
+                updateDeathAnimation();
+                updateParticles();
+                updateConfetti();
+                updateScreenShake();
+                return;
+            }
 
             frameCount++;
             const groundY = canvas.height - groundHeight - player.height;
@@ -2927,9 +3107,10 @@
                     player.x + player.width > obs.x &&
                     player.y < obs.y + obs.height &&
                     player.y + player.height > obs.y) {
-                    // Package A: Check for shield protection
                     if (!hasActivePowerUp('SHIELD')) {
-                        endGame(); // Obstacles end the game!
+                        if (!deathAnimActive) startDeathAnimation();
+                    } else {
+                        haptic([40, 20, 40]); // shield block haptic
                     }
                 }
             });
@@ -2995,6 +3176,7 @@
                 // Check if we just crossed a 100-point milestone
                 if (score % 100 === 0 && score !== 0) {
                     triggerConfetti();
+                    haptic([30, 30, 60]);
                     // Show milestone popup centered on screen (same style as power-up texts)
                     powerUpTexts.push({
                         text: '🔥 ' + score + '!',
@@ -3006,6 +3188,9 @@
                     });
                 }
             }
+
+            // Update combo timer
+            updateCombo();
 
             // Update confetti particles
             updateConfetti();
@@ -3033,8 +3218,12 @@
             drawPenaltyTexts();
             drawPowerUpTexts();
             drawConfetti();
-            
+            drawComboDisplay();
+
             ctx.restore(); // Reset screen shake
+
+            // Death animation overlay (drawn after screen shake restore)
+            drawDeathOverlay();
             
             // RUN THE WHARF flashing text (15 flashes in 5 seconds)
             if (cloudMonsterFlashActive) {
@@ -3140,9 +3329,14 @@
                     dt = Math.min(Math.max(elapsed / 16.667, 0.5), 2.0);
                 }
                 
+                // Apply slow-motion during death animation phase 0
+                if (deathAnimActive && deathAnimPhase === 0) {
+                    dt *= 0.15;
+                }
+
                 update();
                 draw();
-                if (gameActive) {
+                if (gameActive || deathAnimActive) {
                     requestAnimationFrame(gameLoop);
                 }
             } catch (error) {
@@ -3417,6 +3611,11 @@
             raceMilestones = {};
             challengeBeaten = false;
             challengeBeatFlashFrames = 0;
+            deathAnimActive = false;
+            deathAnimPhase = 0;
+            deathAnimTimer = 0;
+            deathFlashAlpha = 0;
+            resetCombo();
             lastFrameTime = 0;
             scoreAccumulator = 0;
             dt = 1;
@@ -3472,8 +3671,7 @@
         // End game
         async function endGame() {
             gameActive = false;
-            playSfx('death');
-            if (bgMusic) bgMusic.pause();
+            // death SFX and music pause handled by startDeathAnimation()
             document.getElementById('finalScore').textContent = score;
             
             // Update tier display
