@@ -1320,6 +1320,7 @@
 
         // Cached DOM references for hot-path performance
         const scoreEl = document.getElementById('score');
+        const gameOverScreenEl = document.getElementById('gameOverScreen');
 
         // Profanity filter - basic list
         const profanityList = ['fuck', 'shit', 'ass', 'bitch', 'damn', 'hell', 'piss', 'crap', 'dick', 'cock', 'pussy', 'bastard', 'slut', 'whore', 'fag', 'nigger', 'nigga', 'cunt', 'twat'];
@@ -1735,8 +1736,6 @@
         // Package A: Screen shake
         let screenShake = { active: false, intensity: 0, duration: 0, elapsed: 0 };
         
-        // Package A: Near-miss tracking
-        let nearMissJustAwarded = false;
 
         // Player
         const player = {
@@ -3405,7 +3404,7 @@
             if (e.code === 'Space') {
                 e.preventDefault();
                 // If game over, restart the game
-                if (!gameActive && !document.getElementById('gameOverScreen').classList.contains('hidden')) {
+                if (!gameActive && !gameOverScreenEl.classList.contains('hidden')) {
                     restartGame();
                 } else {
                     jump();
@@ -3424,7 +3423,7 @@
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             touchHandled = true;
-            if (!gameActive && !document.getElementById('gameOverScreen').classList.contains('hidden')) {
+            if (!gameActive && !gameOverScreenEl.classList.contains('hidden')) {
                 restartGame();
             } else {
                 jump();
@@ -3596,6 +3595,9 @@
             obstacleTimer = 0;
             player.y = canvas.height - groundHeight - player.height;
             player.velocityY = 0;
+            player.jumping = false;
+            player.grounded = true;
+            player.hasDoubleJump = true;
             
             // Reset penalty system
             penaltyCooldown = 0;
@@ -3627,7 +3629,6 @@
             particles = [];
             confettiParticles = [];
             screenShake = { active: false, intensity: 0, duration: 0, elapsed: 0 };
-            nearMissJustAwarded = false;
             gameStartTimestamp = Date.now();
             raceMilestones = {};
             challengeBeaten = false;
@@ -3642,7 +3643,7 @@
             dt = 1;
             
             document.getElementById('startScreen').classList.add('hidden');
-            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameOverScreenEl.classList.add('hidden');
             scoreEl.textContent = '0';
             setScreenVisible(false);
 
@@ -3785,7 +3786,7 @@
             document.querySelectorAll('.time-filter')[2].style.display = '';
             renderMasterScoreboard();
             
-            document.getElementById('gameOverScreen').classList.remove('hidden');
+            gameOverScreenEl.classList.remove('hidden');
             setScreenVisible(true);
         }
 
@@ -4306,12 +4307,6 @@
 
         // Add Enter key listener to username input (mobile + desktop)
         const usernameInput = document.getElementById('startUsernameInput');
-        usernameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault();
-                validateAndShowHowToPlay();
-            }
-        });
         usernameInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault();
@@ -4427,7 +4422,7 @@
         
         function showHowToPlayFromGameOver() {
             // Hide game over screen
-            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameOverScreenEl.classList.add('hidden');
             // Show tutorial modal
             showHowToPlay();
         }
