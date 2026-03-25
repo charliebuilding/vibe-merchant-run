@@ -1133,15 +1133,15 @@
                 <span>🏃</span><span>BOOK RUN THE WHARF</span>
             </a>
 
-            <!-- Share Score -->
-            <button id="shareButton" class="btn" onclick="shareScore()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 0, 107, 0.2), rgba(255, 0, 255, 0.2)); border-color: #FF006B; white-space: nowrap;">
-                <span>📸</span><span>SHARE SCORE</span>
+            <!-- Play Again -->
+            <button class="btn" onclick="restartGame()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 209, 0.2)); border-color: #00ffff; color: #00ffff; white-space: nowrap;">
+                <span>🔄</span><span>PLAY AGAIN</span>
             </button>
 
-            <!-- Row: Play Again + Challenge side by side -->
+            <!-- Row: Share Score + Challenge side by side -->
             <div style="display: flex; gap: 8px;">
-                <button class="btn" onclick="restartGame()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.05); white-space: nowrap;">
-                    <span>🔄</span><span>PLAY AGAIN</span>
+                <button id="shareButton" class="btn" onclick="shareScore()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: rgba(255,0,107,0.05); border-color: #FF006B; white-space: nowrap;">
+                    <span>📸</span><span>SHARE SCORE</span>
                 </button>
                 <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00; white-space: nowrap;">
                     <span>⚔️</span><span>CHALLENGE</span>
