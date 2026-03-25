@@ -1382,8 +1382,8 @@
         let comboMultiplier = 1.0;
         let comboMaxReached = 0;
         let comboDisplayScale = 1.0;
-        const COMBO_TIMEOUT = 3000;
-        const COMBO_MULTIPLIERS = [1, 1, 1.2, 1.2, 1.5, 1.5, 2, 2, 2, 2.5, 2.5, 2.5, 2.5, 3];
+        const COMBO_TIMEOUT = 2000; // 2 seconds to chain (was 3)
+        const COMBO_MULTIPLIERS = [1, 1, 1, 1, 1.2, 1.2, 1.2, 1.5, 1.5, 1.5, 2, 2, 2, 2, 2, 2.5, 2.5, 2.5, 2.5, 3];
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -1532,11 +1532,11 @@
         }
 
         function drawComboDisplay() {
-            if (comboCount < 2) return;
+            if (comboCount < 3) return;
             const x = canvas.width / 2;
             // Position below the FNL logo + score overlay (logo ~120px tall on mobile)
             const isMobileCombo = canvas.width < 500;
-            const y = isMobileCombo ? 160 : 80;
+            const y = isMobileCombo ? 220 : 100;
             const fontSize = Math.round(24 * comboDisplayScale);
 
             // Colour escalation
