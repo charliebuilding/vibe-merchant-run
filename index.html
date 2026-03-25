@@ -1097,13 +1097,14 @@
         
         <!-- Username input at start -->
         <div class="username-input-container" style="margin: 30px 0;">
-            <input type="text" 
-                   id="startUsernameInput" 
-                   class="username-input" 
-                   placeholder="Enter Your Name" 
+            <input type="text"
+                   id="startUsernameInput"
+                   class="username-input"
+                   placeholder="Enter Your Name"
                    maxlength="20"
                    enterkeyhint="go"
-                   style="margin-bottom: 20px;">
+                   style="margin-bottom: 8px;">
+            <div style="color: #888; font-size: 11px; margin-bottom: 12px;">Your name will appear on the public leaderboard</div>
             <div id="usernameError" style="color: #FF006B; font-size: 14px; margin-bottom: 10px; display: none;">
                 Please enter a valid name (no profanity)
             </div>
@@ -1160,10 +1161,10 @@
 
             <!-- Row: Share Score + Challenge side by side -->
             <div style="display: flex; gap: 8px;">
-                <button id="shareButton" class="btn" onclick="shareScore()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: rgba(255,0,107,0.05); border-color: #FF006B; white-space: nowrap;">
+                <button id="shareButton" class="btn" onclick="shareScore()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; padding: 10px 6px; background: rgba(255,0,107,0.05); border-color: #FF006B; overflow: hidden; text-overflow: ellipsis;">
                     <span>📸</span><span>SHARE SCORE</span>
                 </button>
-                <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 10px 8px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00; white-space: nowrap;">
+                <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; padding: 10px 6px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00; overflow: hidden; text-overflow: ellipsis;">
                     <span>⚔️</span><span>CHALLENGE</span>
                 </button>
             </div>
@@ -1533,7 +1534,9 @@
         function drawComboDisplay() {
             if (comboCount < 2) return;
             const x = canvas.width / 2;
-            const y = 80;
+            // Position below the FNL logo + score overlay (logo ~120px tall on mobile)
+            const isMobileCombo = canvas.width < 500;
+            const y = isMobileCombo ? 160 : 80;
             const fontSize = Math.round(24 * comboDisplayScale);
 
             // Colour escalation
@@ -1604,7 +1607,8 @@
         }
 
         function updateDeathAnimation() {
-            deathAnimTimer += 16.67 * dt;
+            // Use real time (16.67ms per frame), not game dt (which is slowed during phase 0)
+            deathAnimTimer += 16.67;
 
             if (deathAnimPhase === 0) {
                 // Slow-motion phase
@@ -2811,7 +2815,7 @@
             const isMobileCanvas = canvas.width < 500;
             let offsetY = isMobileCanvas ? canvas.height * 0.35 : 100;
             const fontSize = isMobileCanvas ? 20 : 18;
-            const lineHeight = isMobileCanvas ? 34 : 30;
+            const lineHeight = isMobileCanvas ? 42 : 36;
             const paddingH = 16;
             const paddingV = 14;
             activePowerUps.forEach(powerUp => {
