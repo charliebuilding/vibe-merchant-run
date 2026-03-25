@@ -651,7 +651,27 @@
             }
         }
 
-        /* Wix iframe embed: compact layout for small iframe (320x500) */
+        /* Wix iframe embed: fix positioning and sizing inside iframes */
+        body.in-iframe {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+        }
+        body.in-iframe #gameCanvas {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        body.in-iframe #startScreen,
+        body.in-iframe #gameOverScreen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
         body.in-iframe #startScreen {
             justify-content: center;
             gap: 12px;
@@ -1217,9 +1237,10 @@
 
         // Set canvas size - more compact for better mobile experience
         function resizeCanvas() {
-            // iOS Safari fix: use visualViewport if available
-            const windowWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-            let windowHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            // In iframe: use iframe dimensions (innerWidth/innerHeight), not visualViewport
+            const inIframe = window.self !== window.top;
+            const windowWidth = (!inIframe && window.visualViewport) ? window.visualViewport.width : window.innerWidth;
+            let windowHeight = (!inIframe && window.visualViewport) ? window.visualViewport.height : window.innerHeight;
             const isMobile = windowWidth < 768;
 
             // In-app browsers (WhatsApp etc.) have toolbars that eat into viewport
