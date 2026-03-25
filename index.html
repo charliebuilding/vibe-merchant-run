@@ -1533,10 +1533,10 @@
 
         function drawComboDisplay() {
             if (comboCount < 3) return;
-            const x = canvas.width / 2;
-            // Position below the FNL logo + score overlay (logo ~120px tall on mobile)
+            // Position on the left side, below the logo/score area to avoid overlap
             const isMobileCombo = canvas.width < 500;
-            const y = isMobileCombo ? 220 : 100;
+            const x = isMobileCombo ? 80 : 120;
+            const y = isMobileCombo ? canvas.height * 0.22 : 80;
             const fontSize = Math.round(24 * comboDisplayScale);
 
             // Colour escalation
@@ -1552,20 +1552,20 @@
             }
 
             ctx.save();
-            ctx.textAlign = 'center';
+            ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.font = `bold ${fontSize}px Orbitron`;
             ctx.fillStyle = color;
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 3;
-            const text = `x${comboCount} COMBO`;
+            const text = `x${comboCount}`;
             ctx.strokeText(text, x, y);
             ctx.fillText(text, x, y);
             // Multiplier subtitle
             if (comboMultiplier > 1) {
-                ctx.font = 'bold 14px Oswald';
+                ctx.font = 'bold 12px Oswald';
                 ctx.fillStyle = color;
-                ctx.fillText(`${comboMultiplier}x SCORE`, x, y + fontSize * 0.7);
+                ctx.fillText(`${comboMultiplier}x`, x, y + fontSize * 0.7);
             }
             ctx.restore();
         }
