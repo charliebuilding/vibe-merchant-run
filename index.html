@@ -454,8 +454,8 @@
         }
         .main-tab {
             font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
-            padding: 8px 10px;
+            font-size: clamp(7px, 2vw, 9px);
+            padding: 8px 6px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid #444;
             border-radius: 6px;
@@ -484,8 +484,8 @@
         }
         .time-filter {
             font-family: 'Orbitron', sans-serif;
-            font-size: 8px;
-            padding: 5px 8px;
+            font-size: clamp(6px, 1.8vw, 8px);
+            padding: 5px 5px;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid #333;
             border-radius: 4px;
@@ -505,8 +505,8 @@
         }
         .scope-btn {
             font-family: 'Orbitron', sans-serif;
-            font-size: 8px;
-            padding: 5px 8px;
+            font-size: clamp(6px, 1.8vw, 8px);
+            padding: 5px 5px;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid #333;
             border-radius: 4px;
@@ -1150,21 +1150,21 @@
         <!-- Action Buttons -->
         <div style="display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 340px; margin: 0 auto;">
             <!-- Book RTW - Primary CTA -->
-            <a href="https://www.letsdothis.com/gb/checkout/ticket?preferred=true&eventId=248572&occurrenceId=21111161678&utm_source=website&utm_medium=social&utm_campaign=jump-game&utm_organiser_id=171180" target="_blank" rel="noopener" class="btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2)); border-color: #FFD700; color: #FFD700; text-decoration: none; white-space: nowrap;">
+            <a href="https://www.letsdothis.com/gb/checkout/ticket?preferred=true&eventId=248572&occurrenceId=21111161678&utm_source=website&utm_medium=social&utm_campaign=jump-game&utm_organiser_id=171180" target="_blank" rel="noopener" class="btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: clamp(12px, 3.5vw, 16px); padding: 12px 10px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2)); border-color: #FFD700; color: #FFD700; text-decoration: none;">
                 <span>🏃</span><span>BOOK RUN THE WHARF</span>
             </a>
 
             <!-- Play Again -->
-            <button class="btn" onclick="restartGame()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 209, 0.2)); border-color: #00ffff; color: #00ffff; white-space: nowrap;">
+            <button class="btn" onclick="restartGame()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: clamp(12px, 3.5vw, 16px); padding: 12px 10px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 209, 0.2)); border-color: #00ffff; color: #00ffff;">
                 <span>🔄</span><span>PLAY AGAIN</span>
             </button>
 
             <!-- Row: Share Score + Challenge side by side -->
             <div style="display: flex; gap: 8px;">
-                <button id="shareButton" class="btn" onclick="shareScore()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; padding: 10px 6px; background: rgba(255,0,107,0.05); border-color: #FF006B; overflow: hidden; text-overflow: ellipsis;">
+                <button id="shareButton" class="btn" onclick="shareScore()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: clamp(9px, 2.5vw, 12px); padding: 10px 4px; background: rgba(255,0,107,0.05); border-color: #FF006B;">
                     <span>📸</span><span>SHARE SCORE</span>
                 </button>
-                <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; padding: 10px 6px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00; overflow: hidden; text-overflow: ellipsis;">
+                <button id="challengeButton" class="btn" onclick="challengeAFriend()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: clamp(9px, 2.5vw, 12px); padding: 10px 4px; background: rgba(255,255,255,0.05); border-color: #FFFF00; color: #FFFF00;">
                     <span>⚔️</span><span>CHALLENGE</span>
                 </button>
             </div>
