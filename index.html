@@ -1086,8 +1086,7 @@
 
     <!-- Start Screen -->
     <div id="startScreen">
-        <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" style="width: 200px; height: auto; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">
-        <div class="title">VIBE MERCHANT RUN</div>
+        <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" style="width: clamp(200px, 60vw, 350px); height: auto; margin-bottom: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">
         <div class="subtitle">Jump to Survive</div>
         
         <!-- Challenge banner (shown when ?beat=X&from=Y is in URL) -->
@@ -1171,6 +1170,22 @@
                 </button>
             </div>
 
+        </div>
+
+        <!-- Monthly Raffle -->
+        <div id="raffleBox" style="display: none; margin: 12px auto; padding: 14px 12px; max-width: 340px; width: 90%; background: rgba(0, 255, 209, 0.06); border: 2px solid #00FFD1; border-radius: 12px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 209, 0.15);">
+            <div style="font-size: clamp(10px, 2.8vw, 13px); color: #00FFD1; letter-spacing: 1px; margin-bottom: 6px;">🎉 MONTHLY RAFFLE 🎉</div>
+            <div style="font-size: clamp(10px, 2.5vw, 12px); color: #ccc; margin-bottom: 10px;">Win FNL merch & race entries!</div>
+            <input type="text" id="raffleFullName" placeholder="Full Name" maxlength="50" style="width: 90%; padding: 8px 10px; margin-bottom: 6px; background: rgba(0,0,0,0.5); border: 1px solid #00FFD1; border-radius: 6px; color: #fff; font-family: Oswald, sans-serif; font-size: 14px; outline: none;">
+            <input type="email" id="raffleEmail" placeholder="Email Address" maxlength="100" style="width: 90%; padding: 8px 10px; margin-bottom: 6px; background: rgba(0,0,0,0.5); border: 1px solid #00FFD1; border-radius: 6px; color: #fff; font-family: Oswald, sans-serif; font-size: 14px; outline: none;">
+            <div id="raffleError" style="color: #FF006B; font-size: 11px; margin-bottom: 6px; display: none;"></div>
+            <button id="raffleSubmitBtn" onclick="submitRaffleEntry()" class="btn" style="width: 90%; padding: 10px; font-size: clamp(10px, 2.8vw, 14px); background: rgba(0, 255, 209, 0.15); border-color: #00FFD1; color: #00FFD1; margin-bottom: 6px;">ENTER RAFFLE</button>
+            <div onclick="dismissRaffle()" style="font-size: 11px; color: #666; cursor: pointer; text-decoration: underline;">No thanks</div>
+            <div style="font-size: 9px; color: #555; margin-top: 6px;">We'll only use your email for raffle updates. Unsubscribe anytime.</div>
+        </div>
+        <div id="raffleSuccess" style="display: none; margin: 12px auto; padding: 14px; max-width: 340px; width: 90%; background: rgba(0, 255, 209, 0.08); border: 2px solid #00FFD1; border-radius: 12px; text-align: center;">
+            <div style="font-size: 16px; color: #00FFD1;">You're in! 🎉</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">Good luck this month!</div>
         </div>
 
         <!-- Master Scoreboard -->
@@ -1375,7 +1390,7 @@
         // Death Animation
         let deathAnimActive = false;
         let deathAnimPhase = 0;       // 0=slo-mo, 1=explosion, 2=fade, 3=done
-        let deathAnimTimer = 0;
+        let deathAnimStartTime = 0;   // performance.now() when current phase started
         let deathFlashAlpha = 0;
 
         // Combo System
@@ -1590,16 +1605,13 @@
         function startDeathAnimation() {
             if (deathAnimActive) return;
             deathAnimActive = true;
-            deathAnimPhase = 0;
-            deathAnimTimer = 0;
-            deathFlashAlpha = 0;
             playSfx('death');
             haptic([50]);
-            // Music keeps playing through death and game over
+            triggerScreenShake(15, 400);
 
             // Spawn death particle burst
-            for (let i = 0; i < 50; i++) {
-                const angle = (Math.PI * 2 / 50) * i;
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 / 30) * i;
                 const speed = 2 + Math.random() * 6;
                 particles.push({
                     x: player.x + player.width / 2,
@@ -1611,31 +1623,35 @@
                     size: 3 + Math.random() * 5
                 });
             }
-            triggerScreenShake(15, 500);
+
+            // Simple timer-based death sequence — endGame after brief delay
+            setTimeout(function() {
+                deathAnimActive = false;
+                endGame();
+            }, 800);
         }
 
         function updateDeathAnimation() {
-            // Use real time (16.67ms per frame), not game dt (which is slowed during phase 0)
-            deathAnimTimer += 16.67;
+            const elapsed = performance.now() - deathAnimStartTime;
 
             if (deathAnimPhase === 0) {
-                // Slow-motion phase
-                if (deathAnimTimer >= 400) {
+                // Slow-motion phase (400ms)
+                if (elapsed >= 400) {
                     deathAnimPhase = 1;
-                    deathAnimTimer = 0;
-                    deathFlashAlpha = 1.0; // screen flash
+                    deathAnimStartTime = performance.now();
+                    deathFlashAlpha = 1.0;
                 }
             } else if (deathAnimPhase === 1) {
-                // Explosion/flash phase
-                deathFlashAlpha = Math.max(0, 1.0 - deathAnimTimer / 300);
-                if (deathAnimTimer >= 300) {
+                // Explosion/flash phase (300ms)
+                deathFlashAlpha = Math.max(0, 1.0 - elapsed / 300);
+                if (elapsed >= 300) {
                     deathAnimPhase = 2;
-                    deathAnimTimer = 0;
+                    deathAnimStartTime = performance.now();
                 }
             } else if (deathAnimPhase === 2) {
-                // Fade to black
-                deathFlashAlpha = deathAnimTimer / 500; // reuse as fade alpha
-                if (deathAnimTimer >= 500) {
+                // Fade to black (500ms)
+                deathFlashAlpha = Math.min(1, elapsed / 500);
+                if (elapsed >= 500) {
                     deathAnimPhase = 3;
                     deathAnimActive = false;
                     endGame();
@@ -2974,17 +2990,8 @@
 
         // Update game
         function update() {
-            if (!gameActive && !deathAnimActive) return;
+            if (!gameActive) return;
             if (gamePaused) return;
-
-            // During death animation, only update particles/effects
-            if (deathAnimActive) {
-                updateDeathAnimation();
-                updateParticles();
-                updateConfetti();
-                updateScreenShake();
-                return;
-            }
 
             frameCount++;
             const groundY = canvas.height - groundHeight - player.height;
@@ -3361,14 +3368,9 @@
                     dt = Math.min(Math.max(elapsed / 16.667, 0.5), 2.0);
                 }
                 
-                // Apply slow-motion during death animation phase 0
-                if (deathAnimActive && deathAnimPhase === 0) {
-                    dt *= 0.15;
-                }
-
                 update();
                 draw();
-                if (gameActive || deathAnimActive) {
+                if (gameActive) {
                     requestAnimationFrame(gameLoop);
                 }
             } catch (error) {
@@ -3647,7 +3649,7 @@
             challengeBeatFlashFrames = 0;
             deathAnimActive = false;
             deathAnimPhase = 0;
-            deathAnimTimer = 0;
+            deathAnimStartTime = 0;
             deathFlashAlpha = 0;
             resetCombo();
             lastFrameTime = 0;
@@ -3797,9 +3799,81 @@
             document.getElementById('raceDistanceTabs').style.display = 'none';
             document.querySelectorAll('.time-filter')[2].style.display = '';
             renderMasterScoreboard();
-            
+
+            // Show/hide raffle based on current month entry
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const enteredMonth = localStorage.getItem('fnl_raffle_entered_month');
+            const dismissed = localStorage.getItem('fnl_raffle_dismissed_month');
+            const raffleBox = document.getElementById('raffleBox');
+            const raffleSuccess = document.getElementById('raffleSuccess');
+            if (enteredMonth === currentMonth) {
+                raffleBox.style.display = 'none';
+                raffleSuccess.style.display = 'block';
+            } else if (dismissed === currentMonth) {
+                raffleBox.style.display = 'none';
+                raffleSuccess.style.display = 'none';
+            } else {
+                raffleBox.style.display = 'block';
+                raffleSuccess.style.display = 'none';
+                // Pre-fill name from game username
+                const nameInput = document.getElementById('raffleFullName');
+                if (playerUsername && !nameInput.value) nameInput.value = playerUsername;
+                document.getElementById('raffleError').style.display = 'none';
+            }
+
             gameOverScreenEl.classList.remove('hidden');
             setScreenVisible(true);
+        }
+
+        // Raffle functions
+        async function submitRaffleEntry() {
+            const name = document.getElementById('raffleFullName').value.trim();
+            const email = document.getElementById('raffleEmail').value.trim();
+            const errorDiv = document.getElementById('raffleError');
+            const btn = document.getElementById('raffleSubmitBtn');
+
+            if (!name) {
+                errorDiv.textContent = 'Please enter your name';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                errorDiv.textContent = 'Please enter a valid email';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            btn.textContent = 'SUBMITTING...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                if (database) {
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    await database.ref('raffle').push({
+                        fullName: name,
+                        email: email,
+                        username: playerUsername || '',
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        month: currentMonth
+                    });
+                    localStorage.setItem('fnl_raffle_entered_month', currentMonth);
+                }
+                document.getElementById('raffleBox').style.display = 'none';
+                document.getElementById('raffleSuccess').style.display = 'block';
+            } catch (e) {
+                console.error('Raffle submission failed:', e);
+                errorDiv.textContent = 'Something went wrong. Try again!';
+                errorDiv.style.display = 'block';
+                btn.textContent = 'ENTER RAFFLE';
+                btn.disabled = false;
+            }
+        }
+
+        function dismissRaffle() {
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            localStorage.setItem('fnl_raffle_dismissed_month', currentMonth);
+            document.getElementById('raffleBox').style.display = 'none';
         }
 
         // Share score function
