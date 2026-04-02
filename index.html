@@ -1238,6 +1238,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -1447,7 +1448,7 @@
             bgMusic.play().then(() => {
                 musicStarted = true;
                 updateMuteBtn();
-                document.getElementById('muteBtn').style.display = 'flex';
+                // DOM mute button hidden — canvas-drawn mute button used instead
             }).catch(e => {
                 // Music file missing or autoplay blocked — silent fail
                 console.log('Music not available:', e.message);
@@ -1628,7 +1629,7 @@
             setTimeout(function() {
                 deathAnimActive = false;
                 endGame();
-            }, 800);
+            }, 500);
         }
 
         function updateDeathAnimation() {
@@ -1685,7 +1686,26 @@
                 bgMusic.play().catch(() => {});
             }
         });
+
+        // Pause music when game scrolls out of view (iframe on Wix site)
+        if (typeof IntersectionObserver !== 'undefined') {
+            const scrollObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!bgMusic || !musicStarted) return;
+                    if (!entry.isIntersecting) {
+                        bgMusic.pause();
+                    } else if (!musicMuted && !document.hidden) {
+                        bgMusic.play().catch(() => {});
+                    }
+                });
+            }, { threshold: 0.1 });
+            scrollObserver.observe(canvas);
+        }
         
+        // Resolves when anonymous auth is ready; gates all DB writes
+        let authReadyResolve;
+        const authReady = new Promise(resolve => { authReadyResolve = resolve; });
+
         // Initialize Firebase with retry
         function initFirebase() {
             try {
@@ -1693,7 +1713,18 @@
                     firebaseApp = firebase.initializeApp(firebaseConfig);
                     database = firebase.database();
                     console.log('🔥 Firebase connected successfully!');
-                    // Fetch leaderboard once connected
+                    // Sign in anonymously — no UI, transparent to the player
+                    firebase.auth().signInAnonymously()
+                        .then(() => {
+                            console.log('🔑 Anonymous auth successful');
+                            authReadyResolve();
+                        })
+                        .catch(err => {
+                            console.warn('Anonymous auth failed:', err.message);
+                            // Still resolve so writes fail gracefully rather than hanging
+                            authReadyResolve();
+                        });
+                    // Fetch leaderboard once connected (reads are public, no auth needed)
                     fetchLeaderboard();
                     return true;
                 }
@@ -1703,7 +1734,7 @@
                 return false;
             }
         }
-        
+
         // Try init immediately, if not loaded yet, retry a few times
         if (!initFirebase()) {
             let retries = 0;
@@ -1719,7 +1750,12 @@
                         s1.onload = () => {
                             const s2 = document.createElement('script');
                             s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js';
-                            s2.onload = () => initFirebase();
+                            s2.onload = () => {
+                                const s3 = document.createElement('script');
+                                s3.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js';
+                                s3.onload = () => initFirebase();
+                                document.head.appendChild(s3);
+                            };
                             document.head.appendChild(s2);
                         };
                         document.head.appendChild(s1);
@@ -2879,6 +2915,81 @@
             });
         }
         
+        // Canvas-drawn mute button (visible even when Wix nav overlaps DOM button)
+        const MUTE_BTN_SIZE = 36;
+        const MUTE_BTN_MARGIN = 12;
+        function getMuteBtnRect() {
+            return {
+                x: canvas.width - MUTE_BTN_SIZE - MUTE_BTN_MARGIN,
+                y: MUTE_BTN_MARGIN,
+                w: MUTE_BTN_SIZE,
+                h: MUTE_BTN_SIZE
+            };
+        }
+
+        function drawCanvasMuteBtn() {
+            if (!musicStarted) return;
+            const r = getMuteBtnRect();
+            const cx = r.x + r.w / 2;
+            const cy = r.y + r.h / 2;
+
+            // Background circle
+            ctx.save();
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r.w / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Speaker icon
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(cx - 7, cy - 4);
+            ctx.lineTo(cx - 3, cy - 4);
+            ctx.lineTo(cx + 3, cy - 8);
+            ctx.lineTo(cx + 3, cy + 8);
+            ctx.lineTo(cx - 3, cy + 4);
+            ctx.lineTo(cx - 7, cy + 4);
+            ctx.closePath();
+            ctx.fill();
+
+            if (musicMuted) {
+                // X mark for muted
+                ctx.strokeStyle = '#FF4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(cx + 6, cy - 5);
+                ctx.lineTo(cx + 13, cy + 5);
+                ctx.moveTo(cx + 13, cy - 5);
+                ctx.lineTo(cx + 6, cy + 5);
+                ctx.stroke();
+            } else {
+                // Sound waves
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(cx + 5, cy, 5, -Math.PI / 4, Math.PI / 4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(cx + 5, cy, 9, -Math.PI / 4, Math.PI / 4);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function isTapOnMuteBtn(canvasX, canvasY) {
+            if (!musicStarted) return false;
+            const r = getMuteBtnRect();
+            // Generous hit area (50% larger than visual)
+            const pad = MUTE_BTN_SIZE * 0.25;
+            return canvasX >= r.x - pad && canvasX <= r.x + r.w + pad &&
+                   canvasY >= r.y - pad && canvasY <= r.y + r.h + pad;
+        }
+
         // Particle Trail
         function createParticleTrail() {
             if (frameCount % 2 === 0) { // Spawn more frequently (every 2 frames instead of 3)
@@ -3261,6 +3372,9 @@
 
             ctx.restore(); // Reset screen shake
 
+            // Draw mute button on canvas (always visible, even behind Wix nav)
+            drawCanvasMuteBtn();
+
             // Death animation overlay (drawn after screen shake restore)
             drawDeathOverlay();
             
@@ -3434,17 +3548,37 @@
         // Use touchstart on mobile (with preventDefault to block synthesized click),
         // click on desktop. Prevents double-fire on mobile devices.
         let touchHandled = false;
+        // Convert page coordinates to canvas coordinates
+        function pageToCanvas(pageX, pageY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (pageX - rect.left) * (canvas.width / rect.width),
+                y: (pageY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             touchHandled = true;
+            const touch = e.touches[0];
+            const pos = pageToCanvas(touch.clientX, touch.clientY);
+            if (isTapOnMuteBtn(pos.x, pos.y)) {
+                toggleMute();
+                return;
+            }
             if (!gameActive && !gameOverScreenEl.classList.contains('hidden')) {
                 restartGame();
             } else {
                 jump();
             }
         });
-        canvas.addEventListener('click', () => {
+        canvas.addEventListener('click', (e) => {
             if (touchHandled) { touchHandled = false; return; }
+            const pos = pageToCanvas(e.clientX, e.clientY);
+            if (isTapOnMuteBtn(pos.x, pos.y)) {
+                toggleMute();
+                return;
+            }
             jump();
         });
 
@@ -3488,6 +3622,9 @@
                 console.error('Firebase not initialized');
                 return { success: false, error: 'Database not available' };
             }
+
+            // Wait for anonymous auth before writing
+            await authReady;
             
             // Rate limiting - 10 seconds between submissions
             const now = Date.now();
@@ -3700,6 +3837,11 @@
             // Start obstacle timer — first obstacle arrives after ~0.8 seconds
             obstacleTimer = 40;
             
+            // Hide decorative overlays during gameplay (prevent visual artifacts over canvas)
+            document.querySelector('.neon-pulse').style.display = 'none';
+            document.querySelector('.scanlines').style.display = 'none';
+            document.getElementById('clubLights').style.display = 'none';
+
             gameActive = true;
             gameLoop();
         }
@@ -3707,6 +3849,10 @@
         // End game
         async function endGame() {
             gameActive = false;
+            // Restore decorative overlays
+            document.querySelector('.neon-pulse').style.display = '';
+            document.querySelector('.scanlines').style.display = '';
+            document.getElementById('clubLights').style.display = '';
             // death SFX and music pause handled by startDeathAnimation()
             document.getElementById('finalScore').textContent = score;
             
@@ -3791,10 +3937,10 @@
 
             // Reset scoreboard to default view and render
             currentMainTab = 'longest';
-            currentTimeFilter = 'today';
+            currentTimeFilter = 'alltime';
             currentScope = 'global';
             document.querySelectorAll('.main-tab').forEach((el, i) => el.classList.toggle('active', i === 0));
-            document.querySelectorAll('.time-filter').forEach((el, i) => el.classList.toggle('active', i === 0));
+            document.querySelectorAll('.time-filter').forEach((el, i) => el.classList.toggle('active', i === 2));
             document.querySelectorAll('.scope-btn').forEach((el, i) => el.classList.toggle('active', i === 1));
             document.getElementById('raceDistanceTabs').style.display = 'none';
             document.querySelectorAll('.time-filter')[2].style.display = '';
@@ -3849,6 +3995,7 @@
 
             try {
                 if (database) {
+                    await authReady;
                     const currentMonth = new Date().toISOString().slice(0, 7);
                     await database.ref('raffle').push({
                         fullName: name,
@@ -4066,7 +4213,7 @@
         // ========== MASTER SCOREBOARD SYSTEM ==========
         let allScoresData = []; // All scores from Firebase
         let currentMainTab = 'longest'; // longest | total | races
-        let currentTimeFilter = 'today'; // today | weekly | alltime
+        let currentTimeFilter = 'alltime'; // today | weekly | alltime
         let currentScope = 'global'; // local | global
         let currentRaceDistance = '5k'; // 5k | 10k | 21.1k | 42.2k
 
