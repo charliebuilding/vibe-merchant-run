@@ -139,16 +139,6 @@
             opacity: 0.3;
         }
 
-        #score {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
-            color: #ffffff;
-            text-shadow: 0 0 10px #ffffff;
-            text-align: center;
-            letter-spacing: 2px;
-            margin-top: 5px;
-        }
-
         #startScreen, #gameOverScreen {
             position: fixed;
             top: 0;
@@ -1016,7 +1006,6 @@
             <div class="fnl-logo">
                 <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" class="fnl-logo-img">
             </div>
-            <div id="score">0</div>
         </div>
         
         <canvas id="gameCanvas"></canvas>
@@ -1338,7 +1327,6 @@
         }
 
         // Cached DOM references for hot-path performance
-        const scoreEl = document.getElementById('score');
         const gameOverScreenEl = document.getElementById('gameOverScreen');
 
         // Profanity filter - basic list
@@ -1625,11 +1613,9 @@
                 });
             }
 
-            // Simple timer-based death sequence — endGame after brief delay
-            setTimeout(function() {
-                deathAnimActive = false;
-                endGame();
-            }, 500);
+            // Instant transition — no delay
+            deathAnimActive = false;
+            endGame();
         }
 
         function updateDeathAnimation() {
@@ -1842,6 +1828,10 @@
         let cloudMonsterTriggered = false;
         let cloudMonsterFlashStart = 0;
         let cloudMonsterFlashActive = false;
+        let wharfFlashStart = 0; // For one-time screen flash at 500
+        let wharfMorphActive = false;
+        let wharfMorphStart = 0;
+        const WHARF_MORPH_DURATION = 400; // ms
         let aerialObstaclesEnabled = false;
 
         // Confetti particles
@@ -1961,13 +1951,14 @@
         // Draw ground
         function drawGround() {
             const groundY = canvas.height - groundHeight;
-            
+            const isWharf = score >= 500;
+
             // Ground platform
-            ctx.fillStyle = '#2a2a3e';
+            ctx.fillStyle = isWharf ? '#3a2a1e' : '#2a2a3e';
             ctx.fillRect(0, groundY, canvas.width, groundHeight);
-            
-            // Neon grid on ground
-            ctx.strokeStyle = '#ff00ff';
+
+            // Neon grid on ground — gold in WHARF zone
+            ctx.strokeStyle = isWharf ? '#FFD700' : '#ff00ff';
             ctx.lineWidth = 2;
             
             // Horizontal lines
@@ -2492,7 +2483,6 @@
                     const coinPoints = Math.floor(10 * comboMultiplier);
                     score += coinPoints;
                     totalCoinsCollected++;
-                    scoreEl.textContent = score;
                     coins.splice(i, 1);
                     // Add particle effect
                     for (let j = 0; j < 10; j++) {
@@ -2568,7 +2558,6 @@
                         playSfx('penalty');
                         haptic([80]);
                         score = Math.max(0, score - 10); // Deduct 10, minimum 0
-                        scoreEl.textContent = score;
 
                         // Visual feedback
                         triggerScreenShake(5, 200);
@@ -2981,6 +2970,20 @@
             ctx.restore();
         }
 
+        function drawScoreCounter() {
+            const isWharf = score >= 500;
+            const fontSize = Math.max(22, Math.min(canvas.width * 0.045, 36));
+            ctx.save();
+            ctx.font = `900 ${fontSize}px Orbitron, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = isWharf ? '#FFD700' : '#00ffff';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(String(score), MUTE_BTN_MARGIN, MUTE_BTN_MARGIN);
+            ctx.restore();
+        }
+
         function isTapOnMuteBtn(canvasX, canvasY) {
             if (!musicStarted) return false;
             const r = getMuteBtnRect();
@@ -3072,7 +3075,6 @@
                         haptic([20, 20, 20, 20, 40]);
                         const nearMissPoints = Math.floor(5 * comboMultiplier);
                         score += nearMissPoints;
-                        scoreEl.textContent = score;
                         obs.nearMissCounted = true;
 
                         // Visual feedback
@@ -3105,6 +3107,23 @@
             if (gamePaused) return;
 
             frameCount++;
+
+            // WHARF morph tween — smoothly grow player from 40x60 to 80x120 over 400ms
+            if (wharfMorphActive) {
+                const t = Math.min(1, (Date.now() - wharfMorphStart) / WHARF_MORPH_DURATION);
+                const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+                const startW = 40, startH = 60, endW = 80, endH = 120;
+                const oldH = player.height;
+                player.width = startW + (endW - startW) * eased;
+                player.height = startH + (endH - startH) * eased;
+                if (player.grounded) {
+                    player.y = canvas.height - groundHeight - player.height;
+                } else {
+                    player.y -= (player.height - oldH);
+                }
+                if (t >= 1) wharfMorphActive = false;
+            }
+
             const groundY = canvas.height - groundHeight - player.height;
 
             // Update player - scale physics by dt
@@ -3277,7 +3296,6 @@
                 scoreAccumulator -= 10;
                 const oldScore = score;
                 score++;
-                scoreEl.textContent = score;
 
                 // Check race milestones
                 for (const [key, threshold] of Object.entries(RACE_THRESHOLDS)) {
@@ -3299,15 +3317,15 @@
                     cloudMonsterTriggered = true;
                     cloudMonsterFlashActive = true;
                     cloudMonsterFlashStart = Date.now();
-                    
-                    // DOUBLE the player size!
-                    player.width = 80;
-                    player.height = 120;
-                    // Snap player to new ground position so they don't float
-                    player.y = canvas.height - groundHeight - player.height;
-                    
+                    wharfFlashStart = Date.now(); // Trigger white screen flash
+                    haptic([100, 50, 100, 50, 200]); // Big haptic burst
+
+                    // Smooth grow over 400ms instead of snap
+                    wharfMorphActive = true;
+                    wharfMorphStart = Date.now();
+
                     // Clear obstacles near the player so the bigger hitbox doesn't instant-kill
-                    obstacles = obstacles.filter(obs => obs.x > player.x + player.width + 50 || obs.x + obs.width < player.x - 50);
+                    obstacles = obstacles.filter(obs => obs.x > player.x + 80 + 50 || obs.x + obs.width < player.x - 50);
                     
                     // Grant a 3-second shield so player can't die during transformation
                     activatePowerUp('SHIELD');
@@ -3349,11 +3367,21 @@
         // Draw game
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
+            // WHARF ZONE background wash — warm red/gold gradient over the purple
+            if (score >= 500) {
+                const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                bgGrad.addColorStop(0, 'rgba(180, 40, 0, 0.45)');   // deep red top
+                bgGrad.addColorStop(0.5, 'rgba(120, 20, 60, 0.35)'); // magenta-red middle
+                bgGrad.addColorStop(1, 'rgba(40, 20, 0, 0.55)');     // dark gold bottom
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
             // Package A: Apply screen shake
             ctx.save();
             applyScreenShake();
-            
+
             drawSkyline();
             drawGround();
             
@@ -3375,45 +3403,78 @@
             // Draw mute button on canvas (always visible, even behind Wix nav)
             drawCanvasMuteBtn();
 
+            // Draw score counter on canvas (top-left)
+            drawScoreCounter();
+
             // Death animation overlay (drawn after screen shake restore)
             drawDeathOverlay();
             
+            // One-time white screen flash when crossing 500
+            if (wharfFlashStart > 0) {
+                const flashElapsed = Date.now() - wharfFlashStart;
+                if (flashElapsed < 500) {
+                    const alpha = 1 - (flashElapsed / 500);
+                    ctx.save();
+                    ctx.fillStyle = `rgba(255, 230, 150, ${alpha * 0.85})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                } else {
+                    wharfFlashStart = 0;
+                }
+            }
+
             // RUN THE WHARF flashing text (15 flashes in 5 seconds)
             if (cloudMonsterFlashActive) {
                 const elapsed = Date.now() - cloudMonsterFlashStart;
                 const flashDuration = 5000; // 5 seconds
                 const flashCount = 15; // Changed from 10 to 15
                 const flashInterval = flashDuration / flashCount / 2; // Divide by 2 for on/off
-                
+
                 const currentFlash = Math.floor(elapsed / flashInterval);
                 const shouldShow = currentFlash % 2 === 0 && elapsed < flashDuration;
-                
+
                 if (shouldShow) {
                     ctx.save();
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    
+
+                    // Pulsing scale based on elapsed time
+                    const pulse = 1 + Math.sin(elapsed * 0.02) * 0.08;
+                    const cx = canvas.width / 2;
+                    const cy = canvas.height / 2;
+                    ctx.translate(cx, cy);
+                    ctx.scale(pulse, pulse);
+                    ctx.translate(-cx, -cy);
+
                     // Responsive font size - scale to fit canvas width
                     const fontSize = Math.min(canvas.width * 0.09, 80);
                     ctx.font = `bold ${fontSize}px Orbitron, sans-serif`;
-                    
+
                     // Gradient text effect - Yellow/Gold colors for Canary Wharf
                     const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
                     gradient.addColorStop(0, '#FFD700'); // Gold
                     gradient.addColorStop(0.5, '#FFFF00'); // Yellow
                     gradient.addColorStop(1, '#FFA500'); // Orange
                     ctx.fillStyle = gradient;
-                    
+
                     // Massive glow effect
                     ctx.shadowBlur = 50;
                     ctx.shadowColor = '#FFD700';
-                    
-                    ctx.fillText('RUN THE WHARF', canvas.width / 2, canvas.height / 2);
-                    
+
+                    ctx.fillText('RUN THE WHARF', cx, cy - fontSize * 0.4);
+
                     // Second layer for extra intensity
                     ctx.shadowColor = '#FFA500';
-                    ctx.fillText('RUN THE WHARF', canvas.width / 2, canvas.height / 2);
-                    
+                    ctx.fillText('RUN THE WHARF', cx, cy - fontSize * 0.4);
+
+                    // ZONE UNLOCKED subtitle
+                    const subSize = fontSize * 0.42;
+                    ctx.font = `bold ${subSize}px Orbitron, sans-serif`;
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 30;
+                    ctx.fillText('★  ZONE UNLOCKED  ★', cx, cy + fontSize * 0.55);
+
                     ctx.restore();
                 }
             }
@@ -3760,6 +3821,9 @@
             // Reset cloud monster transformation state
             cloudMonsterTriggered = false;
             cloudMonsterFlashActive = false;
+            wharfFlashStart = 0;
+            wharfMorphActive = false;
+            wharfMorphStart = 0;
             aerialObstaclesEnabled = false;
             skylineOffset = 0;
             
@@ -3795,7 +3859,6 @@
             
             document.getElementById('startScreen').classList.add('hidden');
             gameOverScreenEl.classList.add('hidden');
-            scoreEl.textContent = '0';
             setScreenVisible(false);
 
             // === EARLY GAME HOOK ===
