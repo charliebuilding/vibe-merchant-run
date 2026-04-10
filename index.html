@@ -3863,17 +3863,10 @@
 
             // === EARLY GAME HOOK ===
             const groundY = canvas.height - groundHeight;
-            
-            // Pre-place a short easy obstacle
-            const easyHeight = 35 + Math.random() * 20;
-            obstacles.push({
-                x: canvas.width * 0.7,
-                y: groundY - easyHeight,
-                width: 30 * (canvasScaleFactor || 1),
-                height: easyHeight,
-                color: neonColors[Math.floor(Math.random() * neonColors.length)],
-                type: 'normal'
-            });
+
+            // Spawn first obstacle via the same createObstacle() path used for
+            // every other obstacle — guarantees identical width/height/colour.
+            createObstacle();
             
             // Pre-place coins ahead of the player
             for (let i = 0; i < 2; i++) {
