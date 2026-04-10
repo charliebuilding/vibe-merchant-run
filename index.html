@@ -583,7 +583,7 @@
             }
 
             .fnl-logo-img {
-                width: 120px;
+                width: 180px;
             }
 
             .fnl-logo-box {
@@ -592,7 +592,7 @@
             }
 
             #score {
-                font-size: 18px;
+                font-size: 24px;
             }
 
             .btn {
@@ -954,9 +954,19 @@
         }
 
         .fnl-logo-img {
-            width: 180px;
+            width: 260px;
             height: auto;
             filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+        }
+
+        #score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 12px #00ffff, 0 0 20px rgba(0, 255, 255, 0.6);
+            text-align: center;
+            letter-spacing: 3px;
         }
 
         .mute-btn {
@@ -1000,12 +1010,14 @@
     </div>
 
 
-    <!-- Game Canvas -->\n    <div id="gameContainer">
+    <!-- Game Canvas -->
+    <div id="gameContainer">
         <!-- FNL Logo Box with Score -->
         <div class="fnl-logo-box">
             <div class="fnl-logo">
                 <img src="FNL_Stacked_Colour_Light.png" alt="Friday Night Lights" class="fnl-logo-img">
             </div>
+            <div id="score">0</div>
         </div>
         
         <canvas id="gameCanvas"></canvas>
@@ -1327,6 +1339,7 @@
         }
 
         // Cached DOM references for hot-path performance
+        const scoreEl = document.getElementById('score');
         const gameOverScreenEl = document.getElementById('gameOverScreen');
 
         // Profanity filter - basic list
@@ -2483,6 +2496,7 @@
                     const coinPoints = Math.floor(10 * comboMultiplier);
                     score += coinPoints;
                     totalCoinsCollected++;
+                    scoreEl.textContent = score;
                     coins.splice(i, 1);
                     // Add particle effect
                     for (let j = 0; j < 10; j++) {
@@ -2558,6 +2572,7 @@
                         playSfx('penalty');
                         haptic([80]);
                         score = Math.max(0, score - 10); // Deduct 10, minimum 0
+                        scoreEl.textContent = score;
 
                         // Visual feedback
                         triggerScreenShake(5, 200);
@@ -2970,20 +2985,6 @@
             ctx.restore();
         }
 
-        function drawScoreCounter() {
-            const isWharf = score >= 500;
-            const fontSize = Math.max(22, Math.min(canvas.width * 0.045, 36));
-            ctx.save();
-            ctx.font = `900 ${fontSize}px Orbitron, sans-serif`;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.shadowBlur = 18;
-            ctx.shadowColor = isWharf ? '#FFD700' : '#00ffff';
-            ctx.fillStyle = '#fff';
-            ctx.fillText(String(score), MUTE_BTN_MARGIN, MUTE_BTN_MARGIN);
-            ctx.restore();
-        }
-
         function isTapOnMuteBtn(canvasX, canvasY) {
             if (!musicStarted) return false;
             const r = getMuteBtnRect();
@@ -3075,6 +3076,7 @@
                         haptic([20, 20, 20, 20, 40]);
                         const nearMissPoints = Math.floor(5 * comboMultiplier);
                         score += nearMissPoints;
+                        scoreEl.textContent = score;
                         obs.nearMissCounted = true;
 
                         // Visual feedback
@@ -3296,6 +3298,7 @@
                 scoreAccumulator -= 10;
                 const oldScore = score;
                 score++;
+                scoreEl.textContent = score;
 
                 // Check race milestones
                 for (const [key, threshold] of Object.entries(RACE_THRESHOLDS)) {
@@ -3402,9 +3405,6 @@
 
             // Draw mute button on canvas (always visible, even behind Wix nav)
             drawCanvasMuteBtn();
-
-            // Draw score counter on canvas (top-left)
-            drawScoreCounter();
 
             // Death animation overlay (drawn after screen shake restore)
             drawDeathOverlay();
@@ -3859,16 +3859,14 @@
             
             document.getElementById('startScreen').classList.add('hidden');
             gameOverScreenEl.classList.add('hidden');
+            scoreEl.textContent = '0';
             setScreenVisible(false);
 
             // === EARLY GAME HOOK ===
             const groundY = canvas.height - groundHeight;
 
-            // Spawn first obstacle via the same createObstacle() path used for
-            // every other obstacle — guarantees identical width/height/colour.
-            createObstacle();
-            
-            // Pre-place coins ahead of the player
+            // Pre-place coins ahead of the player so they have something to collect
+            // before the first obstacle scrolls in
             for (let i = 0; i < 2; i++) {
                 coins.push({
                     x: canvas.width * 0.4 + (i * 140),
@@ -3890,8 +3888,10 @@
             });
             powerUpsSpawnedThisHundred = 1; // Count it
             
-            // Start obstacle timer — first obstacle arrives after ~0.8 seconds
-            obstacleTimer = 40;
+            // Start obstacle timer at 0 — first obstacle spawns after the full
+            // ~65-frame interval (~1.1s), then travels across the screen.
+            // Gives the player a full ~3 seconds before they need to react.
+            obstacleTimer = 0;
             
             // Hide decorative overlays during gameplay (prevent visual artifacts over canvas)
             document.querySelector('.neon-pulse').style.display = 'none';
