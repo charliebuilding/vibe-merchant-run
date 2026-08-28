@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>FNL Runner | Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Orbitron:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            /* FNL web tokens (2026) */
+            --fnl-cyan:    #00FFD1;
+            --fnl-magenta: #FF006B;
+            --fnl-yellow:  #FFD700;
+            --fnl-white:   #FFFFFF;
+            --fnl-grey-light: #B0B0B0;
+            --fnl-grey-mid:   #7A7888;
+            --fnl-grey-dark:  #3A3548;
+            --fnl-black:     #0A0A0A;
+            --fnl-card:      #0F0628;
+            --fnl-card-alt:  #150A33;
+            --fnl-bg-top:    #190A3D;
+            --fnl-bg-bottom: #0D0521;
+            --fnl-rainbow: linear-gradient(90deg,
+                #00FFD1 0%, #B84587 35%, #D9297A 50%,
+                #FF5C47 65%, #FF942B 80%, #FFC91C 100%);
+            --fnl-bg: linear-gradient(180deg, var(--fnl-bg-top) 0%, var(--fnl-bg-bottom) 100%);
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-data:    'Orbitron', sans-serif;
+            --font-body:    'Inter', sans-serif;
+            --text-h2:   clamp(30px, 4.5vw, 44px);
+            --text-h3:   22px;
+            --text-body: 16px;
+            --text-small: 13.5px;
+            --text-label: 12px;
+            --space-1: 8px;  --space-2: 16px; --space-3: 24px;
+            --space-4: 40px; --space-5: 64px;
+            --radius-card: 14px;
+            --radius-btn: 10px;
+            --border-faint: 1px solid rgba(255,255,255,0.07);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { min-height: 100%; }
+        body {
+            min-height: 100vh;
+            background: var(--fnl-bg-bottom);
+            background: var(--fnl-bg);
+            background-attachment: fixed;
+            font-family: var(--font-body);
+            font-size: var(--text-body);
+            color: var(--fnl-grey-light);
+            line-height: 1.6;
+        }
+
+        /* ── Passcode gate ─────────────────────────────── */
+        #gateScreen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3);
+        }
+        .gate-card {
+            background: var(--fnl-card);
+            border: var(--border-faint);
+            border-radius: var(--radius-card);
+            padding: var(--space-5) var(--space-4);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .gate-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--fnl-rainbow);
+        }
+        .gate-logo { width: 206px; max-width: 80%; margin: 0 auto var(--space-4); display: block; }
+        .gate-card h1 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--text-h3);
+            color: var(--fnl-white);
+            margin-bottom: var(--space-1);
+        }
+        .gate-card p { font-size: var(--text-small); margin-bottom: var(--space-3); }
+        .gate-card input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--fnl-black);
+            border: 1px solid var(--fnl-grey-dark);
+            border-radius: var(--radius-btn);
+            color: var(--fnl-white);
+            font-family: var(--font-body);
+            font-size: var(--text-body);
+            margin-bottom: var(--space-2);
+            outline: none;
+        }
+        .gate-card input:focus { border-color: var(--fnl-cyan); }
+        .gate-card button {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--fnl-cyan);
+            color: #062018;
+            border: none;
+            border-radius: var(--radius-btn);
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--text-body);
+            cursor: pointer;
+        }
+        .gate-card button:hover { filter: brightness(1.1); }
+        .gate-error {
+            color: var(--fnl-magenta);
+            font-size: var(--text-small);
+            margin-top: var(--space-2);
+            min-height: 20px;
+        }
+
+        /* ── Dashboard shell ───────────────────────────── */
+        #dashboard { display: none; }
+
+        .nav-bar {
+            background: var(--fnl-black);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px var(--space-3);
+        }
+        .nav-bar img { height: 22px; }
+        @media (max-width: 640px) {
+            .nav-bar img { height: 16px; }
+            .nav-label { display: none; }
+        }
+        .nav-label {
+            font-family: var(--font-data);
+            font-size: var(--text-label);
+            font-weight: 500;
+            letter-spacing: 3px;
+            color: var(--fnl-grey-mid);
+            text-transform: uppercase;
+        }
+
+        .page {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: var(--space-4) var(--space-3) var(--space-5);
+        }
+
+        .section-label {
+            font-family: var(--font-data);
+            font-size: var(--text-label);
+            font-weight: 500;
+            letter-spacing: 3px;
+            color: var(--fnl-cyan);
+            text-transform: uppercase;
+            margin-bottom: var(--space-1);
+        }
+        .page-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--text-h2);
+            color: var(--fnl-white);
+            line-height: 1.15;
+        }
+        .rainbow-rule {
+            width: 96px;
+            height: 3px;
+            background: var(--fnl-rainbow);
+            margin: var(--space-2) 0 var(--space-3);
+        }
+
+        /* Tabs */
+        .tabs { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-4); }
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--fnl-grey-dark);
+            border-radius: var(--radius-btn);
+            color: var(--fnl-grey-light);
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: var(--text-small);
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: var(--fnl-cyan);
+            border-color: var(--fnl-cyan);
+            color: #062018;
+            font-weight: 700;
+        }
+
+        /* Sub filters */
+        .filter-row { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-3); }
+        .filter-btn {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--fnl-grey-dark);
+            border-radius: 999px;
+            color: var(--fnl-grey-mid);
+            font-family: var(--font-body);
+            font-size: var(--text-label);
+            cursor: pointer;
+        }
+        .filter-btn.active { border-color: var(--fnl-magenta); color: var(--fnl-white); }
+
+        /* Stat cards */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+        .stat-card {
+            background: var(--fnl-card);
+            border: var(--border-faint);
+            border-radius: var(--radius-card);
+            padding: var(--space-3) var(--space-2);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--fnl-rainbow);
+        }
+        .stat-value {
+            font-family: var(--font-data);
+            font-weight: 700;
+            font-size: 28px;
+            color: var(--fnl-white);
+            line-height: 1.2;
+        }
+        .stat-label {
+            font-family: var(--font-body);
+            font-size: var(--text-label);
+            color: var(--fnl-grey-mid);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+        }
+
+        /* Chart + tables share the card surface */
+        .panel {
+            background: var(--fnl-card);
+            border: var(--border-faint);
+            border-radius: var(--radius-card);
+            padding: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+        .panel h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 17px;
+            color: var(--fnl-white);
+            margin-bottom: var(--space-2);
+        }
+        .chart-wrap { overflow-x: auto; }
+        .chart-wrap svg { display: block; width: 100%; min-width: 560px; height: auto; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            font-family: var(--font-data);
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--fnl-grey-mid);
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--fnl-grey-dark);
+        }
+        td {
+            font-size: var(--text-small);
+            padding: 9px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--fnl-grey-light);
+            white-space: nowrap;
+        }
+        td.rank { font-family: var(--font-data); color: var(--fnl-cyan); width: 44px; }
+        td.player { font-family: var(--font-display); font-weight: 500; color: var(--fnl-white); }
+        td.num { font-family: var(--font-data); color: var(--fnl-white); }
+        .table-wrap { overflow-x: auto; }
+        tr:nth-child(1) td.rank, tr:nth-child(2) td.rank, tr:nth-child(3) td.rank { color: var(--fnl-yellow); }
+
+        .empty-note { color: var(--fnl-grey-mid); font-size: var(--text-small); padding: var(--space-2) 0; }
+
+        .btn-magenta {
+            padding: 10px 20px;
+            background: var(--fnl-magenta);
+            color: var(--fnl-white);
+            border: none;
+            border-radius: var(--radius-btn);
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--text-small);
+            cursor: pointer;
+        }
+        .btn-magenta:hover { filter: brightness(1.1); }
+
+        select {
+            padding: 8px 12px;
+            background: var(--fnl-black);
+            border: 1px solid var(--fnl-grey-dark);
+            border-radius: var(--radius-btn);
+            color: var(--fnl-white);
+            font-family: var(--font-body);
+            font-size: var(--text-small);
+        }
+
+        .winner-box {
+            margin-top: var(--space-3);
+            padding: var(--space-3);
+            border: 1px solid var(--fnl-magenta);
+            border-radius: var(--radius-card);
+            display: none;
+        }
+        .winner-box .winner-name {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--text-h3);
+            color: var(--fnl-white);
+        }
+
+        #loadingNote { padding: var(--space-4) 0; text-align: center; color: var(--fnl-grey-mid); }
+
+        .footer {
+            text-align: center;
+            padding: var(--space-4) 0 var(--space-3);
+            font-size: var(--text-label);
+            color: var(--fnl-grey-mid);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Passcode gate ── -->
+    <div id="gateScreen">
+        <div class="gate-card">
+            <img class="gate-logo" src="OnxFNL_Stacked_Reverse.png" alt="On x Friday Night Lights">
+            <h1>Runner analytics.</h1>
+            <p>Enter the passcode to view game stats.</p>
+            <input type="password" id="gateInput" placeholder="Passcode" autocomplete="off">
+            <button id="gateBtn">Unlock</button>
+            <div class="gate-error" id="gateError"></div>
+        </div>
+    </div>
+
+    <!-- ── Dashboard ── -->
+    <div id="dashboard">
+        <div class="nav-bar">
+            <img src="OnxFNL_FullLinear_Reverse.png" alt="On x Friday Night Lights">
+            <span class="nav-label">Runner Analytics</span>
+        </div>
+
+        <div class="page">
+            <div class="section-label">01&nbsp;&nbsp;|&nbsp;&nbsp;Game Stats</div>
+            <h2 class="page-title">Who's been running.</h2>
+            <div class="rainbow-rule"></div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="overview">Overview</button>
+                <button class="tab-btn" data-tab="leaderboards">Leaderboards</button>
+                <button class="tab-btn" data-tab="raffle">Raffle</button>
+            </div>
+
+            <div id="loadingNote">Loading live data…</div>
+
+            <!-- Overview -->
+            <div class="tab-panel" id="panel-overview" style="display:none;">
+                <div class="stat-grid" id="statGrid"></div>
+                <div class="panel">
+                    <h3>Plays per day (last 30 days)</h3>
+                    <div class="chart-wrap" id="playsChart"></div>
+                </div>
+            </div>
+
+            <!-- Leaderboards -->
+            <div class="tab-panel" id="panel-leaderboards" style="display:none;">
+                <div class="filter-row" id="lbTabRow">
+                    <button class="filter-btn active" data-lbtab="longest">Longest run</button>
+                    <button class="filter-btn" data-lbtab="total">Total distance</button>
+                    <button class="filter-btn" data-lbtab="races">Races</button>
+                </div>
+                <div class="filter-row" id="lbTimeRow">
+                    <button class="filter-btn" data-lbtime="today">Today</button>
+                    <button class="filter-btn" data-lbtime="weekly">This week</button>
+                    <button class="filter-btn active" data-lbtime="alltime">All time</button>
+                </div>
+                <div class="filter-row" id="lbRaceRow" style="display:none;">
+                    <button class="filter-btn active" data-lbrace="5k">5K</button>
+                    <button class="filter-btn" data-lbrace="10k">10K</button>
+                    <button class="filter-btn" data-lbrace="21.1k">Half</button>
+                    <button class="filter-btn" data-lbrace="42.2k">Marathon</button>
+                </div>
+                <div class="panel">
+                    <div class="table-wrap" id="lbTable"></div>
+                </div>
+            </div>
+
+            <!-- Raffle -->
+            <div class="tab-panel" id="panel-raffle" style="display:none;">
+                <div class="filter-row" style="align-items:center; gap: var(--space-2);">
+                    <select id="raffleMonth"></select>
+                    <span id="raffleCount" style="font-size: var(--text-small);"></span>
+                    <button class="btn-magenta" id="pickWinnerBtn">Pick random winner</button>
+                </div>
+                <div class="winner-box" id="winnerBox">
+                    <div class="section-label" style="color: var(--fnl-magenta);">Winner</div>
+                    <div class="winner-name" id="winnerName"></div>
+                    <div id="winnerEmail" style="font-size: var(--text-small);"></div>
+                </div>
+                <div class="panel" style="margin-top: var(--space-3);">
+                    <div class="table-wrap" id="raffleTable"></div>
+                </div>
+            </div>
+
+            <div class="footer">fridaynightlights.run</div>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ══════════════════ Passcode gate ══════════════════
+        // SHA-256 of the passcode. Casual protection only: the real access
+        // control on the data is the Firebase RTDB security rules.
+        const PASS_HASH = 'db37deb767b071dd0d4ca6ac51ccac7a3804ea6f68e8ed513e4abffe0f3a5893';
+        const GATE_KEY = 'fnl_analytics_ok';
+
+        async function sha256Hex(str) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function tryUnlock() {
+            const input = document.getElementById('gateInput');
+            const hash = await sha256Hex(input.value.trim());
+            if (hash === PASS_HASH) {
+                try { sessionStorage.setItem(GATE_KEY, '1'); } catch (e) {}
+                openDashboard();
+            } else {
+                document.getElementById('gateError').textContent = 'Wrong passcode.';
+                input.value = '';
+            }
+        }
+
+        document.getElementById('gateBtn').addEventListener('click', tryUnlock);
+        document.getElementById('gateInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') tryUnlock();
+        });
+
+        function openDashboard() {
+            document.getElementById('gateScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadAllData();
+        }
+
+        // ══════════════════ Firebase ══════════════════
+        // Same public web config the game ships with (index.html).
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOPyii_ORJRoxWxgpl8IcbUtWQcUhJNmU",
+            authDomain: "jumpgamescorebord.firebaseapp.com",
+            databaseURL: "https://jumpgamescorebord-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "jumpgamescorebord",
+            storageBucket: "jumpgamescorebord.firebasestorage.app",
+            messagingSenderId: "766572512368",
+            appId: "1:766572512368:web:7fc2fde9c84f26fd27a0b5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ══════════════════ State ══════════════════
+        const RACE_THRESHOLDS = { '5k': 5000, '10k': 10000, '21.1k': 21100, '42.2k': 42200 };
+        let allScores = [];        // [{username, score, timestamp, gameDuration, ...}]
+        let allRaffle = [];        // [{fullName, email, username, timestamp, month}]
+        let raffleError = null;
+        let dataLoaded = false;
+        let currentTab = 'overview';
+        let lbTab = 'longest';     // longest | total | races
+        let lbTime = 'alltime';    // today | weekly | alltime
+        let lbRace = '5k';
+
+        // ══════════════════ Data loading ══════════════════
+        // NOTE: full-node dumps, same as the game's Master Scoreboard. Fine up
+        // to ~20-50k entries; beyond that switch to
+        // .orderByChild('timestamp').startAt(cutoff) plus ".indexOn": ["timestamp"].
+        async function loadAllData() {
+            if (dataLoaded) return;
+            // Anonymous auth first: scores reads are public, but raffle reads
+            // may require auth != null depending on the RTDB rules.
+            try { await firebase.auth().signInAnonymously(); } catch (e) {
+                console.warn('Anonymous auth failed:', e && e.code);
+            }
+
+            const scoresP = database.ref('scores').once('value').then(snap => {
+                const out = [];
+                snap.forEach(c => { out.push(c.val()); });
+                return out;
+            });
+            const raffleP = database.ref('raffle').once('value').then(snap => {
+                const out = [];
+                snap.forEach(c => { out.push(c.val()); });
+                return out;
+            }).catch(err => {
+                raffleError = err;
+                return [];
+            });
+
+            try {
+                [allScores, allRaffle] = await Promise.all([scoresP, raffleP]);
+                // Some early entries have gameDuration = Date.now() (the game
+                // computed duration against a zero start timestamp). Anything
+                // over 2h per run is corrupt; zero it so totals stay sane.
+                const MAX_DURATION_MS = 2 * 60 * 60 * 1000;
+                for (const s of allScores) {
+                    if (!(s.gameDuration >= 0) || s.gameDuration > MAX_DURATION_MS) {
+                        s.gameDuration = 0;
+                        s.durationCorrupt = true;
+                    }
+                }
+                dataLoaded = true;
+                document.getElementById('loadingNote').style.display = 'none';
+                renderCurrentTab();
+                showTabPanel(currentTab);
+            } catch (err) {
+                document.getElementById('loadingNote').textContent =
+                    'Could not load data: ' + (err && err.message ? err.message : err);
+            }
+        }
+
+        // ══════════════════ Helpers ══════════════════
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function getTimeCutoff(filter) {
+            if (filter === 'today') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return today.getTime();
+            } else if (filter === 'weekly') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                weekAgo.setHours(0, 0, 0, 0);
+                return weekAgo.getTime();
+            }
+            return 0;
+        }
+
+        function formatRaceTime(ms) {
+            const totalSec = ms / 1000;
+            const mins = Math.floor(totalSec / 60);
+            const secs = (totalSec % 60).toFixed(1);
+            return mins > 0 ? mins + ':' + secs.padStart(4, '0') : secs + 's';
+        }
+
+        function formatDuration(ms) {
+            const totalSec = Math.round(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            if (h > 0) return h + 'h ' + m + 'm';
+            if (m > 0) return m + 'm ' + s + 's';
+            return s + 's';
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' +
+                   d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatKm(metres) {
+            return (metres / 1000).toFixed(1) + ' km';
+        }
+
+        // ══════════════════ Aggregations (ported from the game) ══════════════════
+        function getLongestRunData(data) {
+            const userStats = {};
+            for (const entry of data) {
+                const name = entry.username || 'Unknown';
+                const ts = entry.timestamp || 0;
+                if (!userStats[name]) {
+                    userStats[name] = { username: name, value: 0, latest: 0, latestTs: 0 };
+                }
+                if (entry.score > userStats[name].value) {
+                    userStats[name].value = entry.score;
+                }
+                if (ts > userStats[name].latestTs) {
+                    userStats[name].latest = entry.score;
+                    userStats[name].latestTs = ts;
+                }
+            }
+            return Object.values(userStats).sort((a, b) => b.value - a.value);
+        }
+
+        function getTotalDistanceData(data) {
+            const totals = {};
+            for (const entry of data) {
+                const name = entry.username || 'Unknown';
+                if (!totals[name]) totals[name] = { username: name, value: 0, games: 0 };
+                totals[name].value += entry.score;
+                totals[name].games += 1;
+            }
+            return Object.values(totals).sort((a, b) => b.value - a.value);
+        }
+
+        // Fastest cumulative play time to accumulate a race distance.
+        function getRacesData(data, raceDistance) {
+            const threshold = RACE_THRESHOLDS[raceDistance];
+            const userGames = {};
+            for (const entry of data) {
+                const name = entry.username || 'Unknown';
+                if (!userGames[name]) userGames[name] = [];
+                userGames[name].push(entry);
+            }
+            const results = {};
+            for (const [name, games] of Object.entries(userGames)) {
+                games.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                let cumulativeScore = 0;
+                let cumulativeTime = 0;
+                for (const game of games) {
+                    // Games with corrupt/unknown durations can't contribute a
+                    // race time; skip them so nobody "finishes" in 0.0s.
+                    if (game.durationCorrupt) continue;
+                    cumulativeScore += game.score;
+                    cumulativeTime += (game.gameDuration || 0);
+                    if (cumulativeScore >= threshold) {
+                        results[name] = { username: name, value: cumulativeTime, cumulativeScore };
+                        break;
+                    }
+                }
+            }
+            return Object.values(results).sort((a, b) => a.value - b.value);
+        }
+
+        // ══════════════════ Tabs ══════════════════
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderCurrentTab();
+                showTabPanel(currentTab);
+            });
+        });
+
+        function showTabPanel(tab) {
+            if (!dataLoaded) return;
+            document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = 'none'; });
+            document.getElementById('panel-' + tab).style.display = 'block';
+        }
+
+        function renderCurrentTab() {
+            if (!dataLoaded) return;
+            if (currentTab === 'overview') renderOverview();
+            else if (currentTab === 'leaderboards') renderLeaderboard();
+            else if (currentTab === 'raffle') renderRaffle();
+        }
+
+        // ══════════════════ Overview ══════════════════
+        function renderOverview() {
+            const now = Date.now();
+            const todayCutoff = getTimeCutoff('today');
+            const weekCutoff = getTimeCutoff('weekly');
+
+            const totalPlays = allScores.length;
+            const players = new Set(allScores.map(s => s.username || 'Unknown'));
+            const totalMetres = allScores.reduce((sum, s) => sum + (s.score || 0), 0);
+            const totalTime = allScores.reduce((sum, s) => sum + (s.gameDuration || 0), 0);
+            const avgScore = totalPlays ? Math.round(totalMetres / totalPlays) : 0;
+            const playsToday = allScores.filter(s => (s.timestamp || 0) >= todayCutoff).length;
+            const playsWeek = allScores.filter(s => (s.timestamp || 0) >= weekCutoff).length;
+            const topScore = allScores.reduce((max, s) => Math.max(max, s.score || 0), 0);
+
+            const stats = [
+                { value: totalPlays.toLocaleString(), label: 'Total plays' },
+                { value: players.size.toLocaleString(), label: 'Unique players' },
+                { value: (totalMetres / 1000).toFixed(1), label: 'Total km run' },
+                { value: avgScore.toLocaleString(), label: 'Avg score' },
+                { value: topScore.toLocaleString(), label: 'Top score' },
+                { value: formatDuration(totalTime), label: 'Total play time' },
+                { value: playsToday.toLocaleString(), label: 'Plays today' },
+                { value: playsWeek.toLocaleString(), label: 'Plays this week' }
+            ];
+            document.getElementById('statGrid').innerHTML = stats.map(s =>
+                '<div class="stat-card"><div class="stat-value">' + escapeHtml(s.value) +
+                '</div><div class="stat-label">' + escapeHtml(s.label) + '</div></div>'
+            ).join('');
+
+            document.getElementById('playsChart').innerHTML = buildPlaysPerDaySvg(30);
+        }
+
+        function buildPlaysPerDaySvg(days) {
+            // Bucket plays by local calendar day for the last `days` days.
+            const buckets = [];
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date(start);
+                d.setDate(d.getDate() - i);
+                buckets.push({ start: d.getTime(), end: d.getTime() + 86400000, label: d, count: 0 });
+            }
+            for (const s of allScores) {
+                const ts = s.timestamp || 0;
+                for (const b of buckets) {
+                    if (ts >= b.start && ts < b.end) { b.count++; break; }
+                }
+            }
+
+            const W = 900, H = 260, padL = 40, padB = 34, padT = 16;
+            const maxCount = Math.max(1, ...buckets.map(b => b.count));
+            const chartW = W - padL - 10, chartH = H - padT - padB;
+            const barW = chartW / days;
+
+            let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plays per day">';
+            svg += '<defs><linearGradient id="barGrad" x1="0" y1="1" x2="0" y2="0">' +
+                   '<stop offset="0%" stop-color="#00FFD1" stop-opacity="0.35"/>' +
+                   '<stop offset="100%" stop-color="#00FFD1"/></linearGradient></defs>';
+
+            // y-axis gridlines and labels
+            const steps = Math.min(4, maxCount);
+            for (let i = 0; i <= steps; i++) {
+                const val = Math.round(maxCount * i / steps);
+                const y = padT + chartH - (chartH * i / steps);
+                svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - 10) + '" y2="' + y +
+                       '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+                svg += '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" ' +
+                       'font-family="Orbitron, sans-serif" font-size="10" fill="#7A7888">' + val + '</text>';
+            }
+
+            buckets.forEach((b, i) => {
+                const h = (b.count / maxCount) * chartH;
+                const x = padL + i * barW + barW * 0.15;
+                const y = padT + chartH - h;
+                svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (barW * 0.7).toFixed(1) +
+                       '" height="' + Math.max(h, b.count ? 2 : 0).toFixed(1) +
+                       '" rx="2" fill="url(#barGrad)"><title>' +
+                       b.label.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
+                       ': ' + b.count + ' plays</title></rect>';
+                if (b.count > 0 && b.count === maxCount) {
+                    svg += '<text x="' + (x + barW * 0.35).toFixed(1) + '" y="' + (y - 5).toFixed(1) +
+                           '" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="10" fill="#FFFFFF">' +
+                           b.count + '</text>';
+                }
+                // x labels: every 5th day
+                if (i % 5 === 0 || i === days - 1) {
+                    svg += '<text x="' + (x + barW * 0.35).toFixed(1) + '" y="' + (H - 12) +
+                           '" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#7A7888">' +
+                           b.label.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + '</text>';
+                }
+            });
+            svg += '</svg>';
+            return svg;
+        }
+
+        // ══════════════════ Leaderboards ══════════════════
+        document.querySelectorAll('#lbTabRow .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#lbTabRow .filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                lbTab = btn.dataset.lbtab;
+                document.getElementById('lbRaceRow').style.display = lbTab === 'races' ? 'flex' : 'none';
+                renderLeaderboard();
+            });
+        });
+        document.querySelectorAll('#lbTimeRow .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#lbTimeRow .filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                lbTime = btn.dataset.lbtime;
+                renderLeaderboard();
+            });
+        });
+        document.querySelectorAll('#lbRaceRow .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#lbRaceRow .filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                lbRace = btn.dataset.lbrace;
+                renderLeaderboard();
+            });
+        });
+
+        function renderLeaderboard() {
+            const cutoff = getTimeCutoff(lbTime);
+            const filtered = allScores.filter(s => (s.timestamp || 0) >= cutoff);
+            const el = document.getElementById('lbTable');
+
+            let rows, header;
+            if (lbTab === 'longest') {
+                rows = getLongestRunData(filtered);
+                header = '<tr><th>#</th><th>Player</th><th>Best score</th><th>Latest run</th><th>Last played</th></tr>';
+                el.innerHTML = rows.length ? '<table>' + header + rows.map((r, i) =>
+                    '<tr><td class="rank">' + (i + 1) + '</td>' +
+                    '<td class="player">' + escapeHtml(r.username) + '</td>' +
+                    '<td class="num">' + r.value.toLocaleString() + '</td>' +
+                    '<td>' + r.latest.toLocaleString() + '</td>' +
+                    '<td>' + formatDate(r.latestTs) + '</td></tr>'
+                ).join('') + '</table>' : emptyNote();
+            } else if (lbTab === 'total') {
+                rows = getTotalDistanceData(filtered);
+                header = '<tr><th>#</th><th>Player</th><th>Total distance</th><th>Games</th><th>Avg / game</th></tr>';
+                el.innerHTML = rows.length ? '<table>' + header + rows.map((r, i) =>
+                    '<tr><td class="rank">' + (i + 1) + '</td>' +
+                    '<td class="player">' + escapeHtml(r.username) + '</td>' +
+                    '<td class="num">' + formatKm(r.value) + '</td>' +
+                    '<td>' + r.games + '</td>' +
+                    '<td>' + Math.round(r.value / r.games).toLocaleString() + '</td></tr>'
+                ).join('') + '</table>' : emptyNote();
+            } else {
+                rows = getRacesData(filtered, lbRace);
+                header = '<tr><th>#</th><th>Player</th><th>Time</th><th>Distance banked</th></tr>';
+                el.innerHTML = rows.length ? '<table>' + header + rows.map((r, i) =>
+                    '<tr><td class="rank">' + (i + 1) + '</td>' +
+                    '<td class="player">' + escapeHtml(r.username) + '</td>' +
+                    '<td class="num">' + formatRaceTime(r.value) + '</td>' +
+                    '<td>' + formatKm(r.cumulativeScore) + '</td></tr>'
+                ).join('') + '</table>' : emptyNote('No player has completed this race yet.');
+            }
+        }
+
+        function emptyNote(msg) {
+            return '<div class="empty-note">' + escapeHtml(msg || 'No plays in this period.') + '</div>';
+        }
+
+        // ══════════════════ Raffle ══════════════════
+        let raffleMonthInit = false;
+
+        function renderRaffle() {
+            const tableEl = document.getElementById('raffleTable');
+            const monthSel = document.getElementById('raffleMonth');
+
+            if (raffleError) {
+                tableEl.innerHTML = '<div class="empty-note">Could not read raffle entries (' +
+                    escapeHtml(raffleError.code || raffleError.message || 'permission denied') +
+                    '). The Firebase rules likely block reads on the raffle node; view entries in the ' +
+                    'Firebase console, or loosen the read rule for authenticated users.</div>';
+                document.getElementById('pickWinnerBtn').style.display = 'none';
+                monthSel.style.display = 'none';
+                document.getElementById('raffleCount').textContent = '';
+                return;
+            }
+
+            if (!raffleMonthInit) {
+                const months = [...new Set(allRaffle.map(r => r.month || 'unknown'))].sort().reverse();
+                monthSel.innerHTML = months.map(m =>
+                    '<option value="' + escapeHtml(m) + '">' + escapeHtml(m) + '</option>'
+                ).join('') || '<option value="">No entries</option>';
+                monthSel.addEventListener('change', renderRaffle);
+                raffleMonthInit = true;
+            }
+
+            const month = monthSel.value;
+            const entries = allRaffle
+                .filter(r => (r.month || 'unknown') === month)
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            document.getElementById('raffleCount').textContent =
+                entries.length + (entries.length === 1 ? ' entry' : ' entries');
+
+            tableEl.innerHTML = entries.length ? '<table>' +
+                '<tr><th>Name</th><th>Email</th><th>Game username</th><th>Entered</th></tr>' +
+                entries.map(r =>
+                    '<tr><td class="player">' + escapeHtml(r.fullName) + '</td>' +
+                    '<td>' + escapeHtml(r.email) + '</td>' +
+                    '<td>' + escapeHtml(r.username) + '</td>' +
+                    '<td>' + formatDate(r.timestamp) + '</td></tr>'
+                ).join('') + '</table>' :
+                '<div class="empty-note">No raffle entries for this month.</div>';
+
+            document.getElementById('winnerBox').style.display = 'none';
+        }
+
+        document.getElementById('pickWinnerBtn').addEventListener('click', () => {
+            const month = document.getElementById('raffleMonth').value;
+            const entries = allRaffle.filter(r => (r.month || 'unknown') === month);
+            if (!entries.length) return;
+            const idx = new Uint32Array(1);
+            crypto.getRandomValues(idx);
+            const winner = entries[idx[0] % entries.length];
+            document.getElementById('winnerName').textContent = winner.fullName || winner.username || 'Unknown';
+            document.getElementById('winnerEmail').textContent = winner.email || '';
+            document.getElementById('winnerBox').style.display = 'block';
+        });
+
+        // Auto-unlock for this browser session (must run after all
+        // declarations above, since openDashboard() loads data immediately).
+        try {
+            if (sessionStorage.getItem(GATE_KEY) === '1') openDashboard();
+        } catch (e) {}
+    </script>
+</body>
+</html>
